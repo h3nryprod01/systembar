@@ -8,6 +8,7 @@ final class Preferences {
 
     private enum Key {
         static let startCollapsed = "SystemBar.startCollapsed"
+        static let hasLaunchedBefore = "SystemBar.hasLaunchedBefore"
     }
 
     private init() {
@@ -21,5 +22,14 @@ final class Preferences {
     var startCollapsed: Bool {
         get { defaults.bool(forKey: Key.startCollapsed) }
         set { defaults.set(newValue, forKey: Key.startCollapsed) }
+    }
+
+    /// First-ever launch: don't surprise the user by hiding their icons before
+    /// they've had a chance to arrange them. After the first run, honour their
+    /// chosen collapse state.
+    var isFirstLaunch: Bool {
+        if defaults.bool(forKey: Key.hasLaunchedBefore) { return false }
+        defaults.set(true, forKey: Key.hasLaunchedBefore)
+        return true
     }
 }

@@ -31,7 +31,11 @@ final class ControlItemManager {
     }
     private let settings = SettingsWindowController()
 
-    private var isCollapsed: Bool = Preferences.shared.startCollapsed {
+    // On the very first launch start expanded so the user can see their icons
+    // (and our divider) and arrange them before anything gets hidden.
+    private var isCollapsed: Bool = Preferences.shared.isFirstLaunch
+        ? false
+        : Preferences.shared.startCollapsed {
         didSet { applyState(); Preferences.shared.startCollapsed = isCollapsed }
     }
 

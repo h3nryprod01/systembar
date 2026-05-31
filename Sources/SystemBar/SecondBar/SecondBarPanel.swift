@@ -9,6 +9,7 @@ import SwiftUI
 @MainActor
 final class SecondBarPanel {
     private var panel: NSPanel?
+    private var dismissMonitor: Any?
     private let onActivate: (MenuBarItem) -> Void
 
     init(onActivate: @escaping (MenuBarItem) -> Void) {
@@ -51,11 +52,32 @@ final class SecondBarPanel {
         position(panel, size: size, on: screen ?? NSScreen.main)
         panel.orderFrontRegardless()
         self.panel = panel
+        installDismissMonitor()
     }
 
     func hide() {
+        removeDismissMonitor()
         panel?.orderOut(nil)
         panel = nil
+    }
+
+    /// Close the Second Bar when the user clicks anywhere outside it — the panel
+    /// is non-activating, so it never resigns key on its own.
+    private func installDismissMonitor() {
+        dismissMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown]
+        ) { [weak self] _ in
+            // Any click outside our panel (global monitor only fires for other
+            // apps / outside our windows) dismisses it.
+            Task { @MainActor in self?.hide() }
+        }
+    }
+
+    private func removeDismissMonitor() {
+        if let dismissMonitor {
+            NSEvent.removeMonitor(dismissMonitor)
+            self.dismissMonitor = nil
+        }
     }
 
     // MARK: - Window plumbing
