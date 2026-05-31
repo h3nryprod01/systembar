@@ -62,6 +62,12 @@ final class ControlItemManager {
         configureChevron()
         configureDivider()
         applyState()
+        // Re-apply collapse shortly after launch: at didFinishLaunching the menu
+        // bar isn't fully laid out yet, so an immediate length change can be
+        // ignored. This makes auto-collapse-on-launch actually stick.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.applyState()
+        }
         hotkey.setEnabled(Preferences.shared.hotkeyEnabled)
         NotificationCenter.default.addObserver(
             forName: .systemBarPreferencesChanged, object: nil, queue: .main
@@ -117,6 +123,21 @@ final class ControlItemManager {
     /// Open/close the floating Second Bar that lists every menu-bar item.
     @objc func toggleSecondBar() {
         secondBar.toggle(anchor: chevron.button?.window?.screen)
+        // Auto-rehide also applies to the Second Bar: if it's now open, schedule
+        // it to close after the idle period.
+        scheduleSecondBarAutoHide()
+    }
+
+    /// Close the Second Bar automatically after the configured idle period.
+    private func scheduleSecondBarAutoHide() {
+        rehideTimer?.invalidate()
+        rehideTimer = nil
+        let seconds = Preferences.shared.autoRehideSeconds
+        guard seconds > 0, secondBar.isVisible else { return }
+        rehideTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(seconds),
+                                           repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.secondBar.hide() }
+        }
     }
 
     /// Activate the real item a Second Bar proxy stands for: reveal it, click it,

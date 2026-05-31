@@ -12,9 +12,9 @@ final class GlobalHotkey {
     private var handler: EventHandlerRef?
     private let onFire: () -> Void
 
-    // ⌥⌘Space
-    private static let keyCode = UInt32(kVK_Space)
-    private static let modifiers = UInt32(optionKey | cmdKey)
+    // ⌃⌥⌘B — avoids ⌥⌘Space (Finder search) and other common system combos.
+    private static let keyCode = UInt32(kVK_ANSI_B)
+    private static let modifiers = UInt32(controlKey | optionKey | cmdKey)
     private static let signature = OSType(0x53594252) // 'SYBR'
     private static let id: UInt32 = 1
 
@@ -22,10 +22,11 @@ final class GlobalHotkey {
         self.onFire = onFire
     }
 
-    var description: String { "⌥⌘Space" }
+    var description: String { "⌃⌥⌘B" }
 
-    func register() {
-        guard ref == nil else { return }
+    @discardableResult
+    func register() -> Bool {
+        guard ref == nil else { return true }
 
         var eventType = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
@@ -48,8 +49,13 @@ final class GlobalHotkey {
         }, 1, &eventType, selfPtr, &handler)
 
         let hkID = EventHotKeyID(signature: Self.signature, id: Self.id)
-        RegisterEventHotKey(Self.keyCode, Self.modifiers,
-                            hkID, GetApplicationEventTarget(), 0, &ref)
+        let status = RegisterEventHotKey(Self.keyCode, Self.modifiers,
+                                         hkID, GetApplicationEventTarget(), 0, &ref)
+        if status != noErr {
+            NSLog("SystemBar: hotkey registration failed (status \(status)) for \(description)")
+            return false
+        }
+        return true
     }
 
     func unregister() {
