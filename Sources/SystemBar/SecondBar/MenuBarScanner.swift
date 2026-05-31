@@ -30,6 +30,11 @@ struct MenuBarItem: Identifiable {
 /// Note: items SystemBar has pushed off the left screen edge will report frames
 /// with negative / off-screen x, which is how we know they're currently hidden.
 enum MenuBarScanner {
+    /// Plausible width range for a single status-item icon. Anything wider is the
+    /// app-menu region or a layout spacer, not an icon we want to show.
+    private static let minIconWidth: CGFloat = 8
+    private static let maxIconWidth: CGFloat = 64
+
     static func scan() -> [MenuBarItem] {
         let statusLayer = Int(CGWindowLevelForKey(.statusWindow)) // 25
 
@@ -57,6 +62,14 @@ enum MenuBarScanner {
 
             // Skip our own control items — they shouldn't list themselves.
             if owner == "SystemBar" { return nil }
+
+            // Keep only things that look like real status-item icons. The status
+            // layer also contains wide non-icon windows (the app-menu area,
+            // spacers) which would otherwise show up as a big empty gap on the
+            // left. A genuine icon is a narrow square-ish window.
+            guard bounds.width >= Self.minIconWidth,
+                  bounds.width <= Self.maxIconWidth
+            else { return nil }
 
             // CGWindow bounds are top-left origin; flip to Cocoa bottom-left.
             let cocoaFrame = CGRect(

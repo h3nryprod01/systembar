@@ -101,14 +101,20 @@ final class SecondBarPanel {
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        // Rounded translucent material background.
+        // Dark, rounded background with a hairline border. Menu-bar icons are
+        // white template glyphs; captured against the dark bar they only read
+        // clearly on a dark surface (a light popover washed them out). The HUD
+        // material is dark in both light and dark mode, mirroring the menu bar.
         let effect = NSVisualEffectView()
-        effect.material = .menu
+        effect.material = .hudWindow
         effect.blendingMode = .behindWindow
         effect.state = .active
+        effect.appearance = NSAppearance(named: .vibrantDark)
         effect.wantsLayer = true
         effect.layer?.cornerRadius = 10
         effect.layer?.masksToBounds = true
+        effect.layer?.borderWidth = 1
+        effect.layer?.borderColor = NSColor.white.withAlphaComponent(0.15).cgColor
         panel.contentView = effect
         return panel
     }
