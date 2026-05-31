@@ -33,7 +33,11 @@ enum MenuBarScanner {
     static func scan() -> [MenuBarItem] {
         let statusLayer = Int(CGWindowLevelForKey(.statusWindow)) // 25
 
-        let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+        // IMPORTANT: do NOT use `.optionOnScreenOnly`. When SystemBar has collapsed
+        // the bar, hidden items are pushed off the left screen edge — onscreen-only
+        // would exclude exactly the items the Second Bar exists to show. We list
+        // all windows and filter to the status-item layer ourselves.
+        let options: CGWindowListOption = [.excludeDesktopElements]
         guard let raw = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
             return []
         }
