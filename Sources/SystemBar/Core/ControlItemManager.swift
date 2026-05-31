@@ -62,11 +62,17 @@ final class ControlItemManager {
         configureChevron()
         configureDivider()
         applyState()
-        // Re-apply collapse shortly after launch: at didFinishLaunching the menu
-        // bar isn't fully laid out yet, so an immediate length change can be
-        // ignored. This makes auto-collapse-on-launch actually stick.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.applyState()
+        // Auto-collapse on launch is finicky: at didFinishLaunching the menu bar
+        // and our status items aren't fully laid out / position-restored yet, and
+        // re-setting the divider to the same length is a no-op that triggers no
+        // re-layout. So we "nudge" (expand → collapse) at a few points until it
+        // takes. Retries cover slow restores on busy menu bars.
+        if isCollapsed {
+            for delay in [0.3, 1.0, 2.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    self?.nudgeCollapse()
+                }
+            }
         }
         hotkey.setEnabled(Preferences.shared.hotkeyEnabled)
         NotificationCenter.default.addObserver(
@@ -103,6 +109,18 @@ final class ControlItemManager {
     func collapse() { isCollapsed = true }
     func reveal() { divider.length = Self.expandedLength }
 
+    /// Force the collapsed state to re-apply even if the length is already set:
+    /// briefly expand, then collapse on the next runloop tick so NSStatusItem
+    /// recomputes the layout. Used to make auto-collapse-on-launch reliable.
+    private func nudgeCollapse() {
+        guard isCollapsed else { return }
+        divider.length = Self.expandedLength
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.isCollapsed else { return }
+            self.divider.length = Self.collapsedLength
+        }
+    }
+
     /// Re-apply whatever collapse state the user has chosen (used after a
     /// temporary reveal for clicking a hidden item).
     func restoreCollapseState() { applyState() }
@@ -121,23 +139,10 @@ final class ControlItemManager {
     }
 
     /// Open/close the floating Second Bar that lists every menu-bar item.
+    /// (The Second Bar's own auto-hide timer is managed inside SecondBarPanel,
+    /// because show() is async and the panel only exists after it completes.)
     @objc func toggleSecondBar() {
         secondBar.toggle(anchor: chevron.button?.window?.screen)
-        // Auto-rehide also applies to the Second Bar: if it's now open, schedule
-        // it to close after the idle period.
-        scheduleSecondBarAutoHide()
-    }
-
-    /// Close the Second Bar automatically after the configured idle period.
-    private func scheduleSecondBarAutoHide() {
-        rehideTimer?.invalidate()
-        rehideTimer = nil
-        let seconds = Preferences.shared.autoRehideSeconds
-        guard seconds > 0, secondBar.isVisible else { return }
-        rehideTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(seconds),
-                                           repeats: false) { [weak self] _ in
-            Task { @MainActor in self?.secondBar.hide() }
-        }
     }
 
     /// Activate the real item a Second Bar proxy stands for: reveal it, click it,

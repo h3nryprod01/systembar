@@ -10,6 +10,7 @@ import SwiftUI
 final class SecondBarPanel {
     private var panel: NSPanel?
     private var dismissMonitor: Any?
+    private var autoHideTimer: Timer?
     private let onActivate: (MenuBarItem) -> Void
 
     init(onActivate: @escaping (MenuBarItem) -> Void) {
@@ -67,6 +68,7 @@ final class SecondBarPanel {
         self.panel = panel
         isPresenting = false
         installDismissMonitor()
+        scheduleAutoHide()
     }
 
     func hide() {
@@ -74,9 +76,26 @@ final class SecondBarPanel {
         hidePanelOnly()
     }
 
+    /// Close the panel automatically after the configured idle period. Scheduled
+    /// here (not by the caller) because show() is async — by the time the panel
+    /// truly exists, the caller has long since returned, so `isVisible` checks at
+    /// the call site would always see `false`.
+    private func scheduleAutoHide() {
+        autoHideTimer?.invalidate()
+        autoHideTimer = nil
+        let seconds = Preferences.shared.autoRehideSeconds
+        guard seconds > 0 else { return }
+        autoHideTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(seconds),
+                                             repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.hide() }
+        }
+    }
+
     /// Tear down the current panel without touching `isPresenting` (used both by
     /// `hide()` and at the start of `show()` to guarantee a single live panel).
     private func hidePanelOnly() {
+        autoHideTimer?.invalidate()
+        autoHideTimer = nil
         removeDismissMonitor()
         panel?.orderOut(nil)
         panel = nil
