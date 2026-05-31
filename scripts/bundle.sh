@@ -23,14 +23,27 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/SystemBar"
 cp "$ROOT/scripts/Info.plist" "$APP/Contents/Info.plist"
 
-# Prefer the stable self-signed identity (so TCC permissions survive rebuilds);
-# fall back to ad-hoc if it hasn't been created yet.
-IDENTITY="SystemBar Dev"
-if security find-identity -v -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
+# Sign with a STABLE identity so macOS keeps the granted TCC permissions across
+# rebuilds. Ad-hoc signing changes the cdhash every build and wipes them.
+# Priority:
+#   1) SYSTEMBAR_IDENTITY env var (explicit override)
+#   2) the machine's "Apple Development" identity (already present, Apple-trusted)
+#   3) a self-signed "SystemBar Dev" identity if it exists
+#   4) ad-hoc fallback (permissions will reset each build)
+IDENTITY="${SYSTEMBAR_IDENTITY:-}"
+if [ -z "$IDENTITY" ]; then
+    IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+        | grep -m1 "Apple Development" | sed -E 's/.*"(.*)"/\1/')"
+fi
+if [ -z "$IDENTITY" ] && security find-identity -v -p codesigning 2>/dev/null | grep -q "SystemBar Dev"; then
+    IDENTITY="SystemBar Dev"
+fi
+
+if [ -n "$IDENTITY" ]; then
     echo "▸ Signing with \"$IDENTITY\"…"
-    codesign --force --deep --options runtime --sign "$IDENTITY" "$APP"
+    codesign --force --deep --sign "$IDENTITY" "$APP"
 else
-    echo "▸ Ad-hoc signing (run scripts/make-signing-identity.sh once so permissions persist)…"
+    echo "▸ Ad-hoc signing (no stable identity found; permissions will reset each build)…"
     codesign --force --deep --sign - "$APP"
 fi
 
