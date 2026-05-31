@@ -38,12 +38,17 @@ keyUsage = critical,digitalSignature
 extendedKeyUsage = critical,codeSigning
 EOF
 
-openssl req -x509 -newkey rsa:2048 -nodes \
+# Use the system LibreSSL (/usr/bin/openssl): it produces a PKCS#12 that macOS's
+# `security import` accepts. Homebrew's OpenSSL 3 emits a MAC that fails import.
+SSL=/usr/bin/openssl
+
+"$SSL" req -x509 -newkey rsa:2048 -nodes \
     -keyout "$TMP/key.pem" -out "$TMP/cert.pem" \
     -days 3650 -config "$TMP/cfg" >/dev/null 2>&1
 
-openssl pkcs12 -export -inkey "$TMP/key.pem" -in "$TMP/cert.pem" \
-    -out "$TMP/identity.p12" -passout pass: -name "$IDENTITY" >/dev/null 2>&1
+# LibreSSL ignores -passout and prompts; feed it two empty lines instead.
+printf '\n\n' | "$SSL" pkcs12 -export -inkey "$TMP/key.pem" -in "$TMP/cert.pem" \
+    -out "$TMP/identity.p12" -name "$IDENTITY" >/dev/null 2>&1
 
 # Import into the login keychain and allow codesign to use it without prompting.
 security import "$TMP/identity.p12" -k ~/Library/Keychains/login.keychain-db \
