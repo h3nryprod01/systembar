@@ -49,16 +49,21 @@ struct SettingsView: View {
                     }
                 }
                 if model.useSecondBar && !model.hasScreenRecording {
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                        Text("Screen Recording not granted — falling back to reveal-in-place.")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Button("Grant…") {
-                            ScreenRecordingPermission.request()
-                            model.refresh()
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .top) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            Text("Screen Recording not granted — falling back to reveal-in-place. After enabling it in System Settings, quit and reopen SystemBar for it to take effect.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        HStack {
+                            Button("Request…") {
+                                ScreenRecordingPermission.request()
+                            }
+                            Button("Open System Settings") {
+                                ScreenRecordingPermission.openSettingsPane()
+                            }
                         }
                     }
                 }
@@ -79,8 +84,10 @@ struct SettingsView: View {
                     granted: model.hasScreenRecording,
                     grantedText: "Granted — Second Bar shows real icons.",
                     deniedText: "Optional. Only for the pixel-perfect Second Bar.",
-                    action: { ScreenRecordingPermission.request(); model.refresh() }
+                    action: { ScreenRecordingPermission.request() }
                 )
+                Button("Refresh permission status") { model.refresh() }
+                    .font(.system(size: 11))
             }
 
             Section("How to pin icons") {

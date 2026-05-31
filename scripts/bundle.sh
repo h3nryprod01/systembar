@@ -23,8 +23,16 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/SystemBar"
 cp "$ROOT/scripts/Info.plist" "$APP/Contents/Info.plist"
 
-echo "▸ Ad-hoc signing…"
-codesign --force --deep --sign - "$APP"
+# Prefer the stable self-signed identity (so TCC permissions survive rebuilds);
+# fall back to ad-hoc if it hasn't been created yet.
+IDENTITY="SystemBar Dev"
+if security find-identity -v -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
+    echo "▸ Signing with \"$IDENTITY\"…"
+    codesign --force --deep --options runtime --sign "$IDENTITY" "$APP"
+else
+    echo "▸ Ad-hoc signing (run scripts/make-signing-identity.sh once so permissions persist)…"
+    codesign --force --deep --sign - "$APP"
+fi
 
 echo "✓ Built $APP"
 echo "  Run with: open \"$APP\"   (or relaunch after rebuild: killall SystemBar; open \"$APP\")"

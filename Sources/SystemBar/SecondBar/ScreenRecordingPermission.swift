@@ -1,4 +1,5 @@
-import CoreGraphics
+import AppKit
+import ScreenCaptureKit
 
 /// Screen Recording permission helpers.
 ///
@@ -15,11 +16,31 @@ enum ScreenRecordingPermission {
         CGPreflightScreenCaptureAccess()
     }
 
-    /// Ask the system for Screen Recording access. The first call shows the
-    /// system prompt; subsequent denials require the user to enable it manually
-    /// in System Settings > Privacy & Security > Screen Recording.
-    @discardableResult
-    static func request() -> Bool {
+    /// Ask the system for Screen Recording access.
+    ///
+    /// `CGRequestScreenCaptureAccess()` is unreliable on recent macOS, so we
+    /// instead touch `SCShareableContent`, which is what actually triggers the
+    /// system prompt the first time. If access is still missing afterwards we
+    /// open the Screen Recording pane in System Settings so the user can enable
+    /// it manually. Granting there requires relaunching the app to take effect.
+    static func request() {
+        // 1) Best-effort legacy call (harmless if it no-ops).
         CGRequestScreenCaptureAccess()
+
+        // 2) Touch SCShareableContent — this reliably surfaces the prompt.
+        Task {
+            _ = try? await SCShareableContent.excludingDesktopWindows(
+                false, onScreenWindowsOnly: true
+            )
+            await MainActor.run {
+                if !isGranted { openSettingsPane() }
+            }
+        }
+    }
+
+    /// Open System Settings → Privacy & Security → Screen Recording.
+    static func openSettingsPane() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!
+        NSWorkspace.shared.open(url)
     }
 }

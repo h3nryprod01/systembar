@@ -117,10 +117,16 @@ final class ControlItemManager {
             return
         }
         // Primary action depends on mode:
-        //  - Second Bar (opt-in, Screen Recording granted): open the floating panel.
+        //  - Second Bar (opt-in) with Screen Recording granted: open the panel.
+        //  - Second Bar wanted but permission missing: prompt for it (don't
+        //    silently fall back, which looks like the feature vanished).
         //  - Otherwise (default): reveal the real icons in place — no permissions.
-        if Preferences.shared.useSecondBar && ScreenRecordingPermission.isGranted {
-            toggleSecondBar()
+        if Preferences.shared.useSecondBar {
+            if ScreenRecordingPermission.isGranted {
+                toggleSecondBar()
+            } else {
+                ScreenRecordingPermission.request()
+            }
         } else {
             toggle()
         }
