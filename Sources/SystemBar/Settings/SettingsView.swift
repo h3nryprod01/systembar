@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Observable settings model bridging UserDefaults + login item state to SwiftUI.
+/// Observable settings model bridging UserDefaults + permissions to SwiftUI.
 @MainActor
 final class SettingsModel: ObservableObject {
     @Published var startCollapsed: Bool {
@@ -9,16 +9,23 @@ final class SettingsModel: ObservableObject {
     @Published var launchAtLogin: Bool {
         didSet { LaunchAtLogin.set(launchAtLogin) }
     }
+    @Published var useSecondBar: Bool {
+        didSet { Preferences.shared.useSecondBar = useSecondBar }
+    }
     @Published var hasAccessibility: Bool
+    @Published var hasScreenRecording: Bool
 
     init() {
         startCollapsed = Preferences.shared.startCollapsed
         launchAtLogin = LaunchAtLogin.isEnabled
+        useSecondBar = Preferences.shared.useSecondBar
         hasAccessibility = MenuBarActivator.hasAccessibility
+        hasScreenRecording = ScreenRecordingPermission.isGranted
     }
 
-    func refreshAccessibility() {
+    func refresh() {
         hasAccessibility = MenuBarActivator.hasAccessibility
+        hasScreenRecording = ScreenRecordingPermission.isGranted
     }
 }
 
@@ -32,26 +39,48 @@ struct SettingsView: View {
                 Toggle("Launch SystemBar at login", isOn: $model.launchAtLogin)
             }
 
-            Section("Permissions") {
-                HStack {
-                    Image(systemName: model.hasAccessibility ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .foregroundStyle(model.hasAccessibility ? .green : .orange)
+            Section {
+                Toggle(isOn: $model.useSecondBar) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Accessibility")
-                            .font(.system(size: 12, weight: .medium))
-                        Text(model.hasAccessibility
-                             ? "Granted — clicking hidden icons works."
-                             : "Needed only to click hidden icons from the Second Bar. No Screen Recording required.")
+                        Text("Use pixel-perfect Second Bar")
+                        Text("Show hidden icons in a floating panel (notch-safe). Requires Screen Recording. When off, clicking reveals icons in place — no permissions.")
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                     }
-                    Spacer()
-                    if !model.hasAccessibility {
+                }
+                if model.useSecondBar && !model.hasScreenRecording {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text("Screen Recording not granted — falling back to reveal-in-place.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        Spacer()
                         Button("Grant…") {
-                            MenuBarActivator.requestAccessibility()
+                            ScreenRecordingPermission.request()
+                            model.refresh()
                         }
                     }
                 }
+            } header: {
+                Text("Second Bar")
+            }
+
+            Section("Permissions") {
+                permissionRow(
+                    title: "Accessibility",
+                    granted: model.hasAccessibility,
+                    grantedText: "Granted — clicking icons works.",
+                    deniedText: "Needed to click an icon from the Second Bar.",
+                    action: { MenuBarActivator.requestAccessibility(); model.refresh() }
+                )
+                permissionRow(
+                    title: "Screen Recording",
+                    granted: model.hasScreenRecording,
+                    grantedText: "Granted — Second Bar shows real icons.",
+                    deniedText: "Optional. Only for the pixel-perfect Second Bar.",
+                    action: { ScreenRecordingPermission.request(); model.refresh() }
+                )
             }
 
             Section("How to pin icons") {
@@ -61,7 +90,31 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 380)
-        .onAppear { model.refreshAccessibility() }
+        .frame(width: 440, height: 480)
+        .onAppear { model.refresh() }
+    }
+
+    @ViewBuilder
+    private func permissionRow(
+        title: String,
+        granted: Bool,
+        grantedText: String,
+        deniedText: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack {
+            Image(systemName: granted ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(granted ? .green : .secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 12, weight: .medium))
+                Text(granted ? grantedText : deniedText)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if !granted {
+                Button("Grant…", action: action)
+            }
+        }
     }
 }

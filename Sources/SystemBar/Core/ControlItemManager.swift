@@ -90,7 +90,7 @@ final class ControlItemManager {
         button.target = self
         button.action = #selector(chevronClicked(_:))
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-        button.toolTip = "SystemBar — click to show all menu bar icons"
+        button.toolTip = "SystemBar — click to show/hide menu bar icons (right-click for menu)"
     }
 
     private func configureDivider() {
@@ -114,9 +114,15 @@ final class ControlItemManager {
         let event = NSApp.currentEvent
         if event?.type == .rightMouseUp {
             showMenu()
-        } else {
-            // Primary action: reveal everything in the floating Second Bar.
+            return
+        }
+        // Primary action depends on mode:
+        //  - Second Bar (opt-in, Screen Recording granted): open the floating panel.
+        //  - Otherwise (default): reveal the real icons in place — no permissions.
+        if Preferences.shared.useSecondBar && ScreenRecordingPermission.isGranted {
             toggleSecondBar()
+        } else {
+            toggle()
         }
     }
 
@@ -126,8 +132,10 @@ final class ControlItemManager {
         let toggleTitle = isCollapsed ? "Show Icons in Menu Bar" : "Hide Icons in Menu Bar"
         menu.addItem(withTitle: toggleTitle, action: #selector(toggle), keyEquivalent: "")
             .target = self
-        menu.addItem(withTitle: "Open Second Bar", action: #selector(toggleSecondBar), keyEquivalent: "")
-            .target = self
+        if ScreenRecordingPermission.isGranted {
+            menu.addItem(withTitle: "Open Second Bar", action: #selector(toggleSecondBar), keyEquivalent: "")
+                .target = self
+        }
         menu.addItem(.separator())
         menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
             .target = self

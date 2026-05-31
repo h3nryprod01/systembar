@@ -1,8 +1,14 @@
 import SwiftUI
 
 /// The horizontal "Ice-bar" row of menu-bar item proxies shown in the panel.
+///
+/// Each proxy shows the item's real captured image (via ScreenCaptureKit). The
+/// panel is only used in the opt-in Screen Recording mode, so a captured image
+/// is expected; if one is missing we fall back to a neutral placeholder rather
+/// than a misleading app icon.
 struct SecondBarView: View {
     let items: [MenuBarItem]
+    let images: [CGWindowID: NSImage]
     let onTap: (MenuBarItem) -> Void
 
     var body: some View {
@@ -14,7 +20,7 @@ struct SecondBarView: View {
                     .padding(.horizontal, 8)
             } else {
                 ForEach(items) { item in
-                    ItemButton(item: item, onTap: onTap)
+                    ItemButton(item: item, image: images[item.id], onTap: onTap)
                 }
             }
         }
@@ -26,6 +32,7 @@ struct SecondBarView: View {
 
 private struct ItemButton: View {
     let item: MenuBarItem
+    let image: NSImage?
     let onTap: (MenuBarItem) -> Void
     @State private var hovering = false
 
@@ -34,17 +41,18 @@ private struct ItemButton: View {
             onTap(item)
         } label: {
             Group {
-                if let icon = item.icon {
-                    Image(nsImage: icon)
+                if let image {
+                    Image(nsImage: image)
                         .resizable()
                         .interpolation(.high)
-                        .frame(width: 18, height: 18)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(height: 20)
                 } else {
-                    // Fallback: monochrome chip with first letter.
-                    Text(String(item.displayName.prefix(1)))
-                        .font(.system(size: 11, weight: .semibold))
-                        .frame(width: 18, height: 18)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 4))
+                    // Neutral placeholder when a capture is unavailable.
+                    Image(systemName: "square.dashed")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20, height: 20)
                 }
             }
             .padding(4)

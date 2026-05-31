@@ -22,13 +22,17 @@ final class SecondBarPanel {
         if isVisible {
             hide()
         } else {
-            show(anchor: screen)
+            Task { await show(anchor: screen) }
         }
     }
 
-    func show(anchor screen: NSScreen?) {
+    func show(anchor screen: NSScreen?) async {
         let items = MenuBarScanner.scan()
-        let root = SecondBarView(items: items) { [weak self] item in
+        // Capture each item's real image (requires Screen Recording). Mode B is
+        // only entered when that permission is granted, so this should populate.
+        let images = await MenuBarItemCapture.captureImages(for: items)
+
+        let root = SecondBarView(items: items, images: images) { [weak self] item in
             self?.onActivate(item)
             self?.hide()
         }
