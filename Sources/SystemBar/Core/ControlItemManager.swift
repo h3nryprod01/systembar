@@ -30,13 +30,21 @@ final class ControlItemManager {
         self?.activate(item)
     }
     private let settings = SettingsWindowController()
+    private let onboarding = OnboardingWindowController()
+    private lazy var hotkey = GlobalHotkey { [weak self] in self?.primaryAction() }
+    private var rehideTimer: Timer?
 
+    // Runtime collapse state. This is intentionally NOT persisted on every
+    // toggle: `Preferences.startCollapsed` is a *launch* preference (what state
+    // to start in), separate from the live state. Writing it on every reveal was
+    // the bug that stopped the bar from auto-collapsing on the next launch.
+    //
     // On the very first launch start expanded so the user can see their icons
     // (and our divider) and arrange them before anything gets hidden.
     private var isCollapsed: Bool = Preferences.shared.isFirstLaunch
         ? false
         : Preferences.shared.startCollapsed {
-        didSet { applyState(); Preferences.shared.startCollapsed = isCollapsed }
+        didSet { applyState(); scheduleAutoRehide() }
     }
 
     init() {
@@ -54,6 +62,33 @@ final class ControlItemManager {
         configureChevron()
         configureDivider()
         applyState()
+        hotkey.setEnabled(Preferences.shared.hotkeyEnabled)
+        NotificationCenter.default.addObserver(
+            forName: .systemBarPreferencesChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.refreshFromPreferences() }
+        }
+        if Preferences.shared.isFirstLaunch {
+            onboarding.show()
+        }
+    }
+
+    /// Re-read settings that affect live behaviour (called when Settings change).
+    func refreshFromPreferences() {
+        hotkey.setEnabled(Preferences.shared.hotkeyEnabled)
+    }
+
+    /// The primary toggle, shared by the chevron's left-click and the hotkey.
+    func primaryAction() {
+        if Preferences.shared.useSecondBar {
+            if ScreenRecordingPermission.isGranted {
+                toggleSecondBar()
+            } else {
+                ScreenRecordingPermission.request()
+            }
+        } else {
+            toggle()
+        }
     }
 
     // MARK: - Public actions
@@ -65,6 +100,19 @@ final class ControlItemManager {
     /// Re-apply whatever collapse state the user has chosen (used after a
     /// temporary reveal for clicking a hidden item).
     func restoreCollapseState() { applyState() }
+
+    /// If auto-rehide is enabled and we're currently revealed, schedule a
+    /// re-collapse after the configured idle period.
+    private func scheduleAutoRehide() {
+        rehideTimer?.invalidate()
+        rehideTimer = nil
+        let seconds = Preferences.shared.autoRehideSeconds
+        guard seconds > 0, !isCollapsed else { return }
+        rehideTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(seconds),
+                                           repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.collapse() }
+        }
+    }
 
     /// Open/close the floating Second Bar that lists every menu-bar item.
     @objc func toggleSecondBar() {
@@ -116,20 +164,7 @@ final class ControlItemManager {
             showMenu()
             return
         }
-        // Primary action depends on mode:
-        //  - Second Bar (opt-in) with Screen Recording granted: open the panel.
-        //  - Second Bar wanted but permission missing: prompt for it (don't
-        //    silently fall back, which looks like the feature vanished).
-        //  - Otherwise (default): reveal the real icons in place — no permissions.
-        if Preferences.shared.useSecondBar {
-            if ScreenRecordingPermission.isGranted {
-                toggleSecondBar()
-            } else {
-                ScreenRecordingPermission.request()
-            }
-        } else {
-            toggle()
-        }
+        primaryAction()
     }
 
     private func showMenu() {
@@ -143,6 +178,8 @@ final class ControlItemManager {
                 .target = self
         }
         menu.addItem(.separator())
+        menu.addItem(withTitle: "Setup Guide…", action: #selector(showOnboarding), keyEquivalent: "")
+            .target = self
         menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
             .target = self
         menu.addItem(.separator())
@@ -156,6 +193,10 @@ final class ControlItemManager {
 
     @objc private func openSettings() {
         settings.show()
+    }
+
+    @objc private func showOnboarding() {
+        onboarding.show()
     }
 
     @objc private func quit() {

@@ -1,5 +1,11 @@
 import SwiftUI
 
+extension Notification.Name {
+    /// Posted when a live-affecting setting (e.g. the global hotkey) changes, so
+    /// the ControlItemManager can re-read preferences immediately.
+    static let systemBarPreferencesChanged = Notification.Name("SystemBar.preferencesChanged")
+}
+
 /// Observable settings model bridging UserDefaults + permissions to SwiftUI.
 @MainActor
 final class SettingsModel: ObservableObject {
@@ -12,6 +18,15 @@ final class SettingsModel: ObservableObject {
     @Published var useSecondBar: Bool {
         didSet { Preferences.shared.useSecondBar = useSecondBar }
     }
+    @Published var hotkeyEnabled: Bool {
+        didSet {
+            Preferences.shared.hotkeyEnabled = hotkeyEnabled
+            NotificationCenter.default.post(name: .systemBarPreferencesChanged, object: nil)
+        }
+    }
+    @Published var autoRehideSeconds: Double {
+        didSet { Preferences.shared.autoRehideSeconds = Int(autoRehideSeconds) }
+    }
     @Published var hasAccessibility: Bool
     @Published var hasScreenRecording: Bool
 
@@ -19,6 +34,8 @@ final class SettingsModel: ObservableObject {
         startCollapsed = Preferences.shared.startCollapsed
         launchAtLogin = LaunchAtLogin.isEnabled
         useSecondBar = Preferences.shared.useSecondBar
+        hotkeyEnabled = Preferences.shared.hotkeyEnabled
+        autoRehideSeconds = Double(Preferences.shared.autoRehideSeconds)
         hasAccessibility = MenuBarActivator.hasAccessibility
         hasScreenRecording = ScreenRecordingPermission.isGranted
     }
@@ -37,6 +54,22 @@ struct SettingsView: View {
             Section("Behaviour") {
                 Toggle("Auto-collapse icons on launch", isOn: $model.startCollapsed)
                 Toggle("Launch SystemBar at login", isOn: $model.launchAtLogin)
+                Toggle("Global hotkey (⌥⌘Space)", isOn: $model.hotkeyEnabled)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text("Auto-collapse again after")
+                        Spacer()
+                        Text(model.autoRehideSeconds == 0
+                             ? "Never"
+                             : "\(Int(model.autoRehideSeconds))s")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    Slider(value: $model.autoRehideSeconds, in: 0...60, step: 5)
+                    Text("Re-hide icons this many seconds after revealing them. 0 = stay revealed until you collapse manually.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section {
