@@ -39,29 +39,56 @@ enum MenuBarActivator {
 
         // Give the menu bar a beat to re-lay-out the now-revealed items, then
         // re-scan so we click the item's *current* (revealed) position.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            let current = MenuBarScanner.scan().first { $0.pid == item.pid && $0.ownerName == item.ownerName }
-            let target = current ?? item
-            postClick(at: target.frame)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            // Match by windowID — it is unique and stable. Matching by pid/owner
+            // is wrong: every Control Center module shares one process, so that
+            // would always resolve to the leftmost item, not the clicked one.
+            let current = MenuBarScanner.scan().first { $0.id == item.id }
+            guard let target = current else {
+                // Item didn't reappear (e.g. it's a "show when active" module
+                // that's currently inactive). Nothing to click; just rehide.
+                rehide()
+                return
+            }
+            postClick(at: target.frame, rehide: rehide)
+        }
+    }
+
+    /// Synthesize a left click at the centre of `cocoaFrame`, restoring the
+    /// user's real cursor position afterwards so it doesn't visibly jump and
+    /// stay on the menu bar.
+    private static func postClick(at cocoaFrame: CGRect,
+                                  rehide: @escaping @MainActor () -> Void) {
+        // Convert Cocoa (bottom-left) centre back to CG (top-left) for CGEvent.
+        let screenHeight = NSScreen.screens.first?.frame.height ?? 0
+        let point = CGPoint(x: cocoaFrame.midX, y: screenHeight - cocoaFrame.midY)
+        let restore = CGEvent(source: nil)?.location ?? point
+
+        // Move the cursor to the item, then click. A real move first makes the
+        // target process register the click reliably.
+        warp(to: point)
+        post(.leftMouseDown, at: point)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            post(.leftMouseUp, at: point)
+            // Put the cursor back where the user left it. The opened menu/popover
+            // stays open because the click already landed.
+            warp(to: restore)
 
             // Re-hide a moment later so the bar stays tidy.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: rehide)
         }
     }
 
-    private static func postClick(at cocoaFrame: CGRect) {
-        // Convert Cocoa (bottom-left) center back to CG (top-left) for CGEvent.
-        let screenHeight = NSScreen.screens.first?.frame.height ?? 0
-        let center = CGPoint(
-            x: cocoaFrame.midX,
-            y: screenHeight - cocoaFrame.midY
-        )
+    private static func post(_ type: CGEventType, at point: CGPoint) {
+        let event = CGEvent(mouseEventSource: nil, mouseType: type,
+                            mouseCursorPosition: point, mouseButton: .left)
+        event?.post(tap: .cghidEventTap)
+    }
 
-        let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown,
-                           mouseCursorPosition: center, mouseButton: .left)
-        let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp,
-                         mouseCursorPosition: center, mouseButton: .left)
-        down?.post(tap: .cghidEventTap)
-        up?.post(tap: .cghidEventTap)
+    private static func warp(to point: CGPoint) {
+        CGWarpMouseCursorPosition(point)
+        // Re-couple the hardware mouse to the cursor immediately after warping.
+        CGAssociateMouseAndMouseCursorPosition(1)
     }
 }

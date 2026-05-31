@@ -16,17 +16,26 @@ final class SecondBarPanel {
         self.onActivate = onActivate
     }
 
-    var isVisible: Bool { panel?.isVisible ?? false }
+    /// Set as soon as a show starts (before the async image capture finishes) so
+    /// rapid toggles can't spawn duplicate, untracked panels.
+    private var isPresenting = false
+
+    var isVisible: Bool { panel != nil }
 
     func toggle(anchor screen: NSScreen?) {
-        if isVisible {
+        if isVisible || isPresenting {
             hide()
         } else {
+            isPresenting = true
             Task { await show(anchor: screen) }
         }
     }
 
     func show(anchor screen: NSScreen?) async {
+        isPresenting = true
+        // Never leave an old panel behind — collapse any existing one first.
+        hidePanelOnly()
+
         let items = MenuBarScanner.scan()
         // Capture each item's real image (requires Screen Recording). Mode B is
         // only entered when that permission is granted, so this should populate.
@@ -56,10 +65,18 @@ final class SecondBarPanel {
         position(panel, size: size, on: screen ?? NSScreen.main)
         panel.orderFrontRegardless()
         self.panel = panel
+        isPresenting = false
         installDismissMonitor()
     }
 
     func hide() {
+        isPresenting = false
+        hidePanelOnly()
+    }
+
+    /// Tear down the current panel without touching `isPresenting` (used both by
+    /// `hide()` and at the start of `show()` to guarantee a single live panel).
+    private func hidePanelOnly() {
         removeDismissMonitor()
         panel?.orderOut(nil)
         panel = nil
