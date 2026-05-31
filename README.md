@@ -1,60 +1,65 @@
 # SystemBar
 
-A tidy, transparent menu-bar manager for macOS — collapse the clutter, pin the
-icons you always want, and reveal everything on click. Built because Bartender
-(closed-source, changed ownership) and Hidden Bar don't solve the notch problem
-or per-icon pinning well enough.
+A tidy menu-bar manager for macOS — collapse the clutter, pin the icons you
+always want, and reveal hidden ones in a notch-safe floating bar. Built because
+Bartender (closed-source, changed ownership) and Hidden Bar fell short on the
+notch and on per-icon pinning.
 
-> Design goal: no Screen Recording by default. The core collapse/reveal uses no
-> special permissions at all. The Second Bar lists icons via the public window
-> list + Accessibility; pixel-perfect Screen Recording is kept strictly opt-in.
+## Two modes
+
+| Mode | Permissions | What clicking the chevron does |
+|---|---|---|
+| Reveal-in-place (default) | none | Temporarily expands the divider so the real icons slide back onto the menu bar |
+| Pixel-perfect Second Bar (opt-in) | Screen Recording (+ Accessibility to click) | Opens a floating panel showing every hidden icon, captured for real — notch-safe |
+
+Why the Second Bar needs Screen Recording: macOS has no API to read a per-item
+menu-bar icon. Every Control Center module (WiFi, Bluetooth, Sound, …) is owned
+by one process, so an app-icon approach renders them as identical glyphs. The
+only way to show the true icon is to capture each item's window image — which is
+exactly what Ice and Bartender do, and why they require the same permission.
+SystemBar keeps it strictly opt-in.
 
 ## Status
 
-Working today:
-
-- [x] Menu-bar control item (chevron) + expanding divider
-- [x] Collapse / reveal menu-bar icons (expanding-separator trick — 0 permissions)
-- [x] Right-click menu (Show/Hide, Open Second Bar, Settings, Quit), persisted state
-- [x] Floating Second Bar — lists every status item as app-icon + name, notch-immune
-- [x] Click a Second Bar item -> reveals + clicks the real icon (Accessibility, no Screen Recording)
-- [x] Settings window: auto-collapse, launch at login, Accessibility status
+- [x] Collapse / reveal via expanding-separator (0 permissions)
+- [x] Right-click menu: Show/Hide, Open Second Bar, Settings, Quit
+- [x] Pixel-perfect Second Bar via ScreenCaptureKit (per-window capture, notch-safe)
+- [x] Click an item -> reveal + click the real icon (Accessibility)
+- [x] Dismiss Second Bar on outside click; expand on first launch
+- [x] Settings: auto-collapse, launch at login, Second Bar toggle, permission status
 - [x] Launch at login (SMAppService)
 - [ ] Pin individual icons via UI (today: Cmd-drag relative to divider)
 - [ ] Global hotkey to summon the Second Bar
-- [ ] (Opt-in) Screen Recording fidelity for pixel-perfect icons
+- [ ] Composite single-shot capture (Ice-style) for fewer SCK calls
 
 ## Build & run
 
-    ./scripts/bundle.sh            # -> build/SystemBar.app
+    ./scripts/bundle.sh                       # -> build/SystemBar.app
     open build/SystemBar.app
 
 Rebuild & relaunch:
 
-    ./scripts/bundle.sh && killall SystemBar; open build/SystemBar.app
+    ./scripts/bundle.sh && osascript -e 'tell application "SystemBar" to quit'; open build/SystemBar.app
 
 ## Interaction
 
-- Left-click the chevron  -> opens the Second Bar (shows everything, notch-safe).
-- Right-click the chevron -> menu (toggle hide, Second Bar, Settings, Quit).
-- Cmd-drag icons left/right of the diagonal divider to choose what hides.
+- Left-click chevron  -> reveal icons (in place, or Second Bar if enabled + permitted)
+- Right-click chevron -> menu (Show/Hide, Second Bar, Settings, Quit)
+- Cmd-drag icons left/right of the diagonal divider to choose what hides
 
 ## How collapsing works
 
 macOS has no public API to hide another app's menu-bar icon. The only working
 technique (used by Bartender / Ice / Hidden Bar) is the expanding separator:
+SystemBar adds a divider status item; you Cmd-drag icons to its left to mark
+them hidden; collapsing expands the divider so it pushes them off the screen
+edge. Icons kept to the right stay always-visible (your pins).
 
-1. SystemBar adds its own divider status item to the menu bar.
-2. You Cmd-drag the icons you want to hide to the left of that divider.
-3. Collapsing expands the divider so it pushes everything on its left off the
-   screen edge. Revealing shrinks it back.
+## Architecture
 
-Icons kept to the right of the divider stay always-visible (your pins).
-
-## Permissions
-
-| Feature | Permission | Why |
-|---|---|---|
-| Collapse / reveal | none | expanding-separator trick |
-| List items in Second Bar | none | reads the public window list (CGWindowListCopyWindowInfo) |
-| Click a hidden item | Accessibility | synthesizes a click into the owning app — never Screen Recording |
+    Sources/SystemBar/
+      Core/      ControlItemManager (collapse/reveal, chevron, menu), Preferences, Icons
+      SecondBar/ MenuBarScanner (CGWindowList, no perms), MenuBarItemCapture (SCK),
+                 ScreenRecordingPermission, MenuBarActivator (click-through, AX),
+                 SecondBarPanel / SecondBarView
+      Settings/  SettingsView, SettingsWindowController, LaunchAtLogin
