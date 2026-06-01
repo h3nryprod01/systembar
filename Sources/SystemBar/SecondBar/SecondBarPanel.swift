@@ -53,17 +53,16 @@ final class SecondBarPanel {
         // Never leave an old panel behind — collapse any existing one first.
         hidePanelOnly()
 
-        // Only list items from the menu bar on the anchor screen, so an external
-        // display's items don't bleed into this bar's panel.
-        let items = MenuBarScanner.scan(on: screen)
         // Capture each item's real image (requires Screen Recording). Hidden items
-        // are off-screen and can't be captured there, so temporarily reveal the
-        // bar, capture everything, then re-collapse — all before showing the panel.
-        var images: [CGWindowID: NSImage] = [:]
+        // are off-screen — both invisible to ScreenCaptureKit AND filtered out by
+        // the menu-bar-row scan — so temporarily reveal the bar, THEN scan and
+        // capture, then re-collapse. Using the revealed scan for the item LIST too
+        // is what makes the panel show every icon, not just those right of the
+        // divider.
         let didReveal = (revealer?.beginTemporaryReveal() ?? false)
         if didReveal { try? await Task.sleep(nanoseconds: 180_000_000) }
-        let revealed = MenuBarScanner.scan(on: screen)
-        images = await MenuBarItemCapture.captureImages(for: revealed)
+        let items = MenuBarScanner.scan(on: screen)
+        let images = await MenuBarItemCapture.captureImages(for: items)
         if didReveal { revealer?.endTemporaryReveal() }
 
         let root = SecondBarView(items: items, images: images) { [weak self] item in

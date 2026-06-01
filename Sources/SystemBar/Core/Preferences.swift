@@ -9,7 +9,6 @@ final class Preferences {
     private enum Key {
         static let startCollapsed = "SystemBar.startCollapsed"
         static let hasLaunchedBefore = "SystemBar.hasLaunchedBefore"
-        static let useSecondBar = "SystemBar.useSecondBar"
         static let hotkeyEnabled = "SystemBar.hotkeyEnabled"
         static let autoRehideSeconds = "SystemBar.autoRehideSeconds"
     }
@@ -17,15 +16,11 @@ final class Preferences {
     private init() {
         defaults.register(defaults: [
             // Auto-collapse on launch — keeping the bar tidy is the whole point.
-            // Click the chevron to reveal everything in the Second Bar.
             Key.startCollapsed: true,
-            // Default OFF: the pixel-perfect Second Bar needs Screen Recording.
-            // Without it we use reveal-in-place, which needs no permissions.
-            Key.useSecondBar: false,
-            // Global hotkey on by default (⌥⌘Space).
+            // Global hotkey on by default (⌃⌥⌘B).
             Key.hotkeyEnabled: true,
-            // 0 = never auto-rehide. Otherwise re-collapse after N seconds.
-            Key.autoRehideSeconds: 0
+            // Re-collapse 10s after revealing in place. 0 = stay revealed.
+            Key.autoRehideSeconds: 10
         ])
     }
 
@@ -43,14 +38,6 @@ final class Preferences {
     var autoRehideSeconds: Int {
         get { defaults.integer(forKey: Key.autoRehideSeconds) }
         set { defaults.set(newValue, forKey: Key.autoRehideSeconds) }
-    }
-
-    /// When true (and Screen Recording is granted), the chevron opens the
-    /// pixel-perfect floating Second Bar. When false, the chevron reveals the
-    /// real icons in place — no permissions required.
-    var useSecondBar: Bool {
-        get { defaults.bool(forKey: Key.useSecondBar) }
-        set { defaults.set(newValue, forKey: Key.useSecondBar) }
     }
 
     /// First-ever launch: don't surprise the user by hiding their icons before

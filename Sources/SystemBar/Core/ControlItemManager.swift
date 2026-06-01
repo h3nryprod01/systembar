@@ -97,17 +97,12 @@ final class ControlItemManager {
         hotkey.setEnabled(Preferences.shared.hotkeyEnabled)
     }
 
-    /// The primary toggle, shared by the chevron's left-click and the hotkey.
+    /// The primary action for the chevron's left-click and the hotkey: reveal the
+    /// hidden icons in place (in the real menu bar), then auto-collapse after the
+    /// configured delay. The floating Second Bar is opened separately, from the
+    /// right-click menu, so this stays flicker-free.
     func primaryAction() {
-        if Preferences.shared.useSecondBar {
-            if ScreenRecordingPermission.isGranted {
-                toggleSecondBar()
-            } else {
-                ScreenRecordingPermission.request()
-            }
-        } else {
-            toggle()
-        }
+        toggle()
     }
 
     // MARK: - Public actions
@@ -201,6 +196,16 @@ final class ControlItemManager {
         secondBar.toggle(anchor: chevron.button?.window?.screen)
     }
 
+    /// Menu action: open the Second Bar, requesting Screen Recording first if it
+    /// isn't granted yet (otherwise captured icons would be blank).
+    @objc private func openSecondBar() {
+        if ScreenRecordingPermission.isGranted {
+            toggleSecondBar()
+        } else {
+            ScreenRecordingPermission.request()
+        }
+    }
+
     /// Activate the real item a Second Bar proxy stands for: reveal it, click it,
     /// then restore the collapsed state.
     private func activate(_ item: MenuBarItem) {
@@ -267,10 +272,11 @@ final class ControlItemManager {
         let toggleTitle = isCollapsed ? "Show Icons in Menu Bar" : "Hide Icons in Menu Bar"
         menu.addItem(withTitle: toggleTitle, action: #selector(toggle), keyEquivalent: "")
             .target = self
-        if ScreenRecordingPermission.isGranted {
-            menu.addItem(withTitle: "Open Second Bar", action: #selector(toggleSecondBar), keyEquivalent: "")
-                .target = self
-        }
+        // Always offer the Second Bar — it's the way to see ALL icons (incl.
+        // hidden Control Center items). If Screen Recording isn't granted yet,
+        // opening it will prompt for the permission.
+        menu.addItem(withTitle: "Open Second Bar (all icons)", action: #selector(openSecondBar), keyEquivalent: "")
+            .target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Setup Guide…", action: #selector(showOnboarding), keyEquivalent: "")
             .target = self

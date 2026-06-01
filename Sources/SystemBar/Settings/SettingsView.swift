@@ -15,9 +15,6 @@ final class SettingsModel: ObservableObject {
     @Published var launchAtLogin: Bool {
         didSet { LaunchAtLogin.set(launchAtLogin) }
     }
-    @Published var useSecondBar: Bool {
-        didSet { Preferences.shared.useSecondBar = useSecondBar }
-    }
     @Published var hotkeyEnabled: Bool {
         didSet {
             Preferences.shared.hotkeyEnabled = hotkeyEnabled
@@ -33,7 +30,6 @@ final class SettingsModel: ObservableObject {
     init() {
         startCollapsed = Preferences.shared.startCollapsed
         launchAtLogin = LaunchAtLogin.isEnabled
-        useSecondBar = Preferences.shared.useSecondBar
         hotkeyEnabled = Preferences.shared.hotkeyEnabled
         autoRehideSeconds = Double(Preferences.shared.autoRehideSeconds)
         hasAccessibility = MenuBarActivator.hasAccessibility
@@ -54,7 +50,7 @@ struct SettingsView: View {
             Section("Behaviour") {
                 Toggle("Auto-collapse icons on launch", isOn: $model.startCollapsed)
                 Toggle("Launch SystemBar at login", isOn: $model.launchAtLogin)
-                Toggle("Global hotkey (⌥⌘Space)", isOn: $model.hotkeyEnabled)
+                Toggle("Global hotkey (⌃⌥⌘B)", isOn: $model.hotkeyEnabled)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
                         Text("Auto-collapse again after")
@@ -66,40 +62,16 @@ struct SettingsView: View {
                             .monospacedDigit()
                     }
                     Slider(value: $model.autoRehideSeconds, in: 0...60, step: 5)
-                    Text("Re-hide icons this many seconds after revealing them. 0 = stay revealed until you collapse manually.")
+                    Text("After clicking the chevron to reveal hidden icons, re-hide them automatically this many seconds later. 0 = stay revealed until you click again.")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
             }
 
             Section {
-                Toggle(isOn: $model.useSecondBar) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Use pixel-perfect Second Bar")
-                        Text("Show hidden icons in a floating panel (notch-safe). Requires Screen Recording. When off, clicking reveals icons in place — no permissions.")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                if model.useSecondBar && !model.hasScreenRecording {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(alignment: .top) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                            Text("Screen Recording not granted — falling back to reveal-in-place. After enabling it in System Settings, quit and reopen SystemBar for it to take effect.")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                        }
-                        HStack {
-                            Button("Request…") {
-                                ScreenRecordingPermission.request()
-                            }
-                            Button("Open System Settings") {
-                                ScreenRecordingPermission.openSettingsPane()
-                            }
-                        }
-                    }
-                }
+                Text("Right-click the chevron → \"Open Second Bar\" to see ALL menu bar icons — including hidden Control Center items — in a floating, notch-safe panel. Capturing their real images needs Screen Recording.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             } header: {
                 Text("Second Bar")
             }
