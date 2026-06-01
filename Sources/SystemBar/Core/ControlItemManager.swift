@@ -287,6 +287,12 @@ final class ControlItemManager {
         menu.addItem(withTitle: "Show All Icons", action: #selector(openSecondBar), keyEquivalent: "")
             .target = self
         menu.addItem(.separator())
+        // When the bar is crowded (or items sit behind the notch) the divider can
+        // be impossible to grab. This temporarily expands the bar AND nudges the
+        // chevron, making the divider easy to find and ⌘-drag.
+        menu.addItem(withTitle: "Reveal Divider to Rearrange", action: #selector(revealDivider), keyEquivalent: "")
+            .target = self
+        menu.addItem(.separator())
         menu.addItem(withTitle: "Setup Guide…", action: #selector(showOnboarding), keyEquivalent: "")
             .target = self
         menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
@@ -315,6 +321,25 @@ final class ControlItemManager {
 
     @objc private func support() {
         Donate.open()
+    }
+
+    /// Make the divider easy to grab: fully expand the bar and briefly flash the
+    /// divider wider so it stands out, then settle back to its draggable width.
+    @objc private func revealDivider() {
+        if isCollapsed { isCollapsed = false } // expand so nothing is off-screen
+        divider.length = 40                    // flash wider to draw the eye
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            self?.divider.length = Self.expandedLength
+        }
+        let alert = NSAlert()
+        alert.messageText = "Drag the divider now"
+        alert.informativeText = "The diagonal divider ( ╲ ) is highlighted in the menu bar. Hold ⌘ and drag it left/right to choose which icons hide when you collapse."
+        alert.addButton(withTitle: "OK")
+        // Run the alert AFTER the flash so the user sees the wide divider first.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
+        }
     }
 
     @objc private func quit() {

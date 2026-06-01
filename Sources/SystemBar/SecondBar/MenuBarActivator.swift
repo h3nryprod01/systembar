@@ -46,8 +46,25 @@ enum MenuBarActivator {
             // is wrong: every Control Center module shares one process, so that
             // would always resolve to the leftmost item, not the clicked one.
             let current = MenuBarScanner.scan().first { $0.id == item.id }
+            logClick(item: item, resolved: current)
             guard let target = current else { return }
             postClick(at: target.frame)
+        }
+    }
+
+    private static func logClick(item: MenuBarItem, resolved: MenuBarItem?) {
+        var lines = ["click '\(item.displayName)' id=\(item.id)"]
+        if let r = resolved {
+            lines.append("  resolved: x=\(Int(r.frame.minX)) w=\(Int(r.frame.width)) midX=\(Int(r.frame.midX)) midY=\(Int(r.frame.midY))")
+        } else {
+            lines.append("  resolved: NIL — item not found after reveal (won't click)")
+        }
+        lines.append("  AXTrusted=\(AXIsProcessTrusted())")
+        let text = lines.joined(separator: "\n") + "\n"
+        if let url = try? FileManager.default.url(
+            for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true
+        ).appendingPathComponent("SystemBar-click.log") {
+            try? text.write(to: url, atomically: true, encoding: .utf8)
         }
     }
 
