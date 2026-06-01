@@ -26,7 +26,10 @@ final class ControlItemManager {
         let width = screen?.frame.width ?? NSScreen.main?.frame.width ?? 2000
         return max(500, min(width + 200, 4000))
     }
-    private static let expandedLength: CGFloat = 1
+    // Expanded width of the divider. 20pt (matching Hidden Bar) so it presents a
+    // real, ⌘-draggable target — a 1pt divider is nearly impossible to grab,
+    // which blocks arranging it and thus collapsing.
+    private static let expandedLength: CGFloat = 20
 
     private let chevron: NSStatusItem
     private let divider: NSStatusItem
