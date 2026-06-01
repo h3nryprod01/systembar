@@ -13,9 +13,9 @@ floating, notch-safe panel.
 ![License](https://img.shields.io/badge/license-GPLv3-green?style=flat-square)
 [![Sponsor](https://img.shields.io/badge/%E2%98%95-Support-pink?style=flat-square)](https://paypal.me/CuongNguyen557)
 
-> Built because Bartender went closed-source and changed hands in 2024, and
-> Hidden Bar / Ice still struggle with the notch and with Control Center icons.
-> SystemBar is free, open source, and keeps Screen Recording strictly opt-in.
+> Built because Bartender went closed-source and changed hands in 2024, and the
+> MacBook notch keeps swallowing menu-bar icons. SystemBar is free, open source,
+> and keeps Screen Recording strictly opt-in.
 
 ## Screenshots
 
@@ -64,7 +64,7 @@ Download `SystemBar.app` from [Releases](../../releases), move it to
 ## How collapsing works
 
 macOS has **no public API** to hide another app's menu-bar icon. The only working
-technique (used by Bartender / Ice / Hidden Bar) is the *expanding separator*:
+technique is the *expanding separator*:
 SystemBar adds a divider; you ⌘-drag it to the right, past the icons you want to
 hide; collapsing expands the divider so everything to its left slides off-screen.
 
@@ -88,4 +88,4 @@ project going. Thank you!
 
 ## License
 
-[GPLv3](LICENSE) — same spirit as Ice. Contributions welcome.
+[GPLv3](LICENSE). Contributions welcome.
