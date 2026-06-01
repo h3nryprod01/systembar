@@ -1,5 +1,9 @@
 # SystemBar
 
+<p align="center">
+  <img src="docs/images/hero.svg" alt="SystemBar" width="100%">
+</p>
+
 A tidy, transparent menu-bar manager for macOS. Collapse the clutter, reveal what
 you need, and see *every* icon — including hidden Control Center items — in a
 floating, notch-safe panel.
@@ -13,10 +17,17 @@ floating, notch-safe panel.
 > Hidden Bar / Ice still struggle with the notch and with Control Center icons.
 > SystemBar is free, open source, and keeps Screen Recording strictly opt-in.
 
-## Demo
+## Screenshots
 
-<!-- Add a GIF here: docs/demo.gif (record collapse + Second Bar) -->
-_A short demo GIF goes here._
+**Collapse the clutter** — one click hides everything left of the divider:
+
+<img src="docs/images/before-after.svg" alt="Before and after collapsing" width="100%">
+
+**Show All Icons** — a floating, notch-safe panel lists every status item, hidden and visible, with their real captured images:
+
+<img src="docs/images/second-bar.svg" alt="Show All Icons panel" width="100%">
+
+> Illustrations above are diagrams; a real screen-recorded GIF will replace them in a later release.
 
 ## Features
 
