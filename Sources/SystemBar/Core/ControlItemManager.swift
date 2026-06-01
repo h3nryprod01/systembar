@@ -35,8 +35,7 @@ final class ControlItemManager {
     private let chevron: NSStatusItem
     private let divider: NSStatusItem
     private lazy var secondBar = SecondBarPanel(
-        onActivate: { [weak self] item in self?.activate(item) },
-        revealer: self
+        onActivate: { [weak self] item in self?.activate(item) }
     )
     private let settings = SettingsWindowController()
     private let onboarding = OnboardingWindowController()
@@ -78,7 +77,13 @@ final class ControlItemManager {
         divider.length = Self.expandedLength
         if isCollapsed {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                self?.applyCollapsed()
+                guard let self else { return }
+                // Snapshot every icon while still expanded, THEN collapse — so the
+                // Second Bar has cached images and never needs to reveal later.
+                Task { @MainActor in
+                    await MenuBarSnapshot.shared.refresh(on: self.divider.button?.window?.screen)
+                    self.applyCollapsed()
+                }
             }
         }
         hotkey.setEnabled(Preferences.shared.hotkeyEnabled)
@@ -242,6 +247,14 @@ final class ControlItemManager {
             applyCollapsed()
         } else {
             divider.length = Self.expandedLength
+            // Items are now visible — refresh the snapshot so the Second Bar's
+            // cached images stay current without ever revealing on its own.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                guard let self else { return }
+                Task { @MainActor in
+                    await MenuBarSnapshot.shared.refresh(on: self.divider.button?.window?.screen)
+                }
+            }
         }
         chevron.button?.image = Icons.chevron(collapsed: isCollapsed)
         chevron.button?.image?.isTemplate = true
@@ -308,16 +321,3 @@ final class ControlItemManager {
     }
 }
 
-// MARK: - ItemRevealing
-
-extension ControlItemManager: ItemRevealing {
-    func beginTemporaryReveal() -> Bool {
-        guard isCollapsed else { return false }
-        divider.length = Self.expandedLength
-        return true
-    }
-
-    func endTemporaryReveal() {
-        divider.length = Self.collapsedLength(for: divider.button?.window?.screen)
-    }
-}

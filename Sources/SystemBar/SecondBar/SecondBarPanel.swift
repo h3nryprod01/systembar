@@ -6,31 +6,15 @@ import SwiftUI
 ///
 /// Living in its own window means it is **immune to the notch** — items never get
 /// swallowed the way they do when crammed into the real menu bar.
-/// Lets the Second Bar temporarily bring hidden menu-bar items back on screen so
-/// they can be captured, then restore the previous collapse state.
-@MainActor
-protocol ItemRevealing: AnyObject {
-    /// Expand so hidden items return on screen. Returns true if a reveal actually
-    /// happened (i.e. the bar was collapsed); false if nothing needed revealing.
-    func beginTemporaryReveal() -> Bool
-    /// Restore the collapsed state after capture.
-    func endTemporaryReveal()
-}
-
 @MainActor
 final class SecondBarPanel {
     private var panel: NSPanel?
     private var dismissMonitor: Any?
     private var autoHideTimer: Timer?
     private let onActivate: (MenuBarItem) -> Void
-    /// Bridges to ControlItemManager so the panel can briefly bring hidden items
-    /// back on screen for capture (ScreenCaptureKit can't image an off-screen
-    /// window) and restore afterwards.
-    private weak var revealer: ItemRevealing?
 
-    init(onActivate: @escaping (MenuBarItem) -> Void, revealer: ItemRevealing) {
+    init(onActivate: @escaping (MenuBarItem) -> Void) {
         self.onActivate = onActivate
-        self.revealer = revealer
     }
 
     /// Set as soon as a show starts (before the async image capture finishes) so
@@ -44,35 +28,22 @@ final class SecondBarPanel {
             hide()
         } else {
             isPresenting = true
-            Task { await show(anchor: screen) }
+            show(anchor: screen)
         }
     }
 
-    func show(anchor screen: NSScreen?) async {
+    func show(anchor screen: NSScreen?) {
         isPresenting = true
         // Never leave an old panel behind — collapse any existing one first.
         hidePanelOnly()
 
-        // Capture each item's real image (requires Screen Recording). Hidden items
-        // are off-screen — both invisible to ScreenCaptureKit AND filtered out by
-        // the menu-bar-row scan — so temporarily reveal the bar, THEN scan and
-        // capture, then re-collapse. Using the revealed scan for the item LIST too
-        // is what makes the panel show every icon, not just those right of the
-        // divider.
-        let didReveal = (revealer?.beginTemporaryReveal() ?? false)
-        // Don't capture on a fixed delay — the menu bar re-lays-out asynchronously
-        // after a reveal, so a fixed sleep is racy (sometimes blank). Poll until
-        // the item set is stable and fully on screen.
-        let items = await stableItems(on: screen)
-        var images = await MenuBarItemCapture.captureImages(for: items)
-        // Retry once for any item that didn't yield an image (transient miss).
-        let missing = items.filter { images[$0.id] == nil }
-        if !missing.isEmpty {
-            try? await Task.sleep(nanoseconds: 80_000_000)
-            let retry = await MenuBarItemCapture.captureImages(for: missing)
-            images.merge(retry) { _, new in new }
-        }
-        if didReveal { revealer?.endTemporaryReveal() }
+        // Read from the cached snapshot taken while items were visible — we do NOT
+        // reveal hidden items here, which is what caused the flash of icons before
+        // the panel appeared. The snapshot is refreshed at launch and on every
+        // reveal-in-place, so it stays current.
+        let snap = MenuBarSnapshot.shared
+        let items = snap.items
+        let images = snap.images
 
         let root = SecondBarView(items: items, images: images) { [weak self] item in
             self?.onActivate(item)
@@ -108,30 +79,7 @@ final class SecondBarPanel {
         hidePanelOnly()
     }
 
-    /// Poll the scanner until the item set is stable (same ids two reads in a row)
-    /// and every item sits on screen, so capture sees fully laid-out windows.
-    /// Falls back to whatever's there after ~600ms.
-    private func stableItems(on screen: NSScreen?) async -> [MenuBarItem] {
-        var previousIDs: Set<CGWindowID> = []
-        var last: [MenuBarItem] = []
-        for _ in 0..<8 {
-            try? await Task.sleep(nanoseconds: 70_000_000) // 70ms between polls
-            let items = MenuBarScanner.scan(on: screen)
-            let ids = Set(items.map(\.id))
-            let allOnScreen = items.allSatisfy { $0.frame.minX >= 0 }
-            if !items.isEmpty, ids == previousIDs, allOnScreen {
-                return items
-            }
-            previousIDs = ids
-            last = items
-        }
-        return last
-    }
-
-    /// Close the panel automatically after the configured idle period. Scheduled
-    /// here (not by the caller) because show() is async — by the time the panel
-    /// truly exists, the caller has long since returned, so `isVisible` checks at
-    /// the call site would always see `false`.
+    /// Close the panel automatically after the configured idle period.
     private func scheduleAutoHide() {
         autoHideTimer?.invalidate()
         autoHideTimer = nil
