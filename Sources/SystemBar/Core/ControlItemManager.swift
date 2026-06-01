@@ -70,7 +70,8 @@ final class ControlItemManager {
         if isCollapsed {
             for delay in [0.3, 1.0, 2.0] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                    self?.nudgeCollapse()
+                    guard let self, self.hasItemsToHide() else { return }
+                    self.nudgeCollapse()
                 }
             }
         }
@@ -105,9 +106,49 @@ final class ControlItemManager {
 
     // MARK: - Public actions
 
-    @objc func toggle() { isCollapsed.toggle() }
+    @objc func toggle() {
+        // The expanding-separator trick can only hide icons that sit to the LEFT
+        // of our divider. macOS drops new status items at the far left, so on a
+        // fresh setup the divider is left of everything and collapsing does
+        // nothing. Detect that and guide the user instead of silently failing.
+        if !isCollapsed && !hasItemsToHide() {
+            showArrangeHint()
+            return
+        }
+        isCollapsed.toggle()
+    }
     func collapse() { isCollapsed = true }
     func reveal() { divider.length = Self.expandedLength }
+
+    /// True if at least one other status item sits to the LEFT of our divider —
+    /// i.e. there is actually something that collapsing would hide.
+    private func hasItemsToHide() -> Bool {
+        guard let dividerX = divider.button?.window?.frame.minX else { return true }
+        // Any non-SystemBar item whose left edge is left of the divider.
+        return MenuBarScanner.scan().contains { $0.frame.minX < dividerX - 2 }
+    }
+
+    /// One-time-feeling alert explaining the ⌘-drag step, shown when the user
+    /// tries to collapse but nothing is positioned to be hidden.
+    private func showArrangeHint() {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Arrange your icons first"
+        alert.informativeText = """
+        SystemBar hides the icons that sit to the LEFT of its divider ( ╲ ).
+
+        Right now nothing is to the left of it, so there's nothing to hide.
+
+        Hold ⌘ and drag the icons you want to hide to the LEFT of the ╲ divider \
+        (or drag the divider to the right past them). macOS remembers the order, \
+        so you only need to do this once.
+        """
+        alert.addButton(withTitle: "Got it")
+        alert.addButton(withTitle: "Open Setup Guide")
+        if alert.runModal() == .alertSecondButtonReturn {
+            onboarding.show()
+        }
+    }
 
     /// Force the collapsed state to re-apply even if the length is already set:
     /// briefly expand, then collapse on the next runloop tick so NSStatusItem
