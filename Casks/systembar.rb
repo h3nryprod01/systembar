@@ -2,10 +2,10 @@ cask "systembar" do
   version "0.1.0"
   sha256 :no_check # replace with the release zip's sha256 once published
 
-  url "https://github.com/nguyenphucuong/systembar/releases/download/v#{version}/SystemBar.zip"
+  url "https://github.com/h3nryprod01/systembar/releases/download/v#{version}/SystemBar.zip"
   name "SystemBar"
   desc "Tidy, transparent menu-bar manager — collapse, reveal, and see every icon"
-  homepage "https://github.com/nguyenphucuong/systembar"
+  homepage "https://github.com/h3nryprod01/systembar"
 
   depends_on macos: ">= :sonoma"
 

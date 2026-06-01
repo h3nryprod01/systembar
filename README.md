@@ -7,7 +7,7 @@ floating, notch-safe panel.
 ![Platform](https://img.shields.io/badge/macOS-14%2B-blue?style=flat-square)
 ![Swift](https://img.shields.io/badge/Swift-6-orange?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-green?style=flat-square)
-[![Sponsor](https://img.shields.io/badge/%E2%98%95-Support-pink?style=flat-square)](https://github.com/sponsors/nguyenphucuong)
+[![Sponsor](https://img.shields.io/badge/%E2%98%95-Support-pink?style=flat-square)](https://github.com/sponsors/h3nryprod01)
 
 > Built because Bartender went closed-source and changed hands in 2024, and
 > Hidden Bar / Ice still struggle with the notch and with Control Center icons.
@@ -72,7 +72,7 @@ Swift 6 / Xcode 26+, macOS 14+. No external dependencies.
 ## Support
 
 SystemBar is free and will stay free. If it earns a spot in your menu bar,
-[☕ buy me a coffee](https://github.com/sponsors/nguyenphucuong) — it keeps the
+[☕ buy me a coffee](https://github.com/sponsors/h3nryprod01) — it keeps the
 project going. Thank you!
 
 ## License
