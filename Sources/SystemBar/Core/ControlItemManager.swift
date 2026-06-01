@@ -35,7 +35,8 @@ final class ControlItemManager {
     private let chevron: NSStatusItem
     private let divider: NSStatusItem
     private lazy var secondBar = SecondBarPanel(
-        onActivate: { [weak self] item in self?.activate(item) }
+        onActivate: { [weak self] item in self?.activate(item) },
+        revealAndStay: { [weak self] in self?.revealAndStay() }
     )
     private let settings = SettingsWindowController()
     private let onboarding = OnboardingWindowController()
@@ -77,13 +78,7 @@ final class ControlItemManager {
         divider.length = Self.expandedLength
         if isCollapsed {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                guard let self else { return }
-                // Snapshot every icon while still expanded, THEN collapse — so the
-                // Second Bar has cached images and never needs to reveal later.
-                Task { @MainActor in
-                    await MenuBarSnapshot.shared.refresh(on: self.divider.button?.window?.screen)
-                    self.applyCollapsed()
-                }
+                self?.applyCollapsed()
             }
         }
         hotkey.setEnabled(Preferences.shared.hotkeyEnabled)
@@ -207,14 +202,18 @@ final class ControlItemManager {
         }
     }
 
-    /// Activate the real item a Second Bar proxy stands for: reveal the bar in
-    /// place and click the real icon. We switch to the un-collapsed state (rather
-    /// than a momentary reveal) so the auto-rehide timer re-collapses it later —
-    /// re-collapsing immediately would move the icon and dismiss popover menus
-    /// (Notion) the instant they open.
+    /// Reveal the real bar and keep it revealed; the Second Bar calls this before
+    /// scanning so windowIDs are fresh and on screen. Switching to the
+    /// un-collapsed state arms the auto-rehide timer to re-collapse later.
+    func revealAndStay() {
+        if isCollapsed { isCollapsed = false } else { reveal() }
+    }
+
+    /// Activate the real item a Second Bar proxy stands for. The bar is already
+    /// revealed-and-staying (see revealAndStay), so we just click the icon at its
+    /// current, freshly-scanned position.
     private func activate(_ item: MenuBarItem) {
-        if isCollapsed { isCollapsed = false }   // arms auto-rehide via didSet
-        MenuBarActivator.click(item, reveal: { [weak self] in self?.reveal() })
+        MenuBarActivator.click(item, reveal: {})
     }
 
     // MARK: - Configuration
@@ -243,14 +242,6 @@ final class ControlItemManager {
             applyCollapsed()
         } else {
             divider.length = Self.expandedLength
-            // Items are now visible — refresh the snapshot so the Second Bar's
-            // cached images stay current without ever revealing on its own.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-                guard let self else { return }
-                Task { @MainActor in
-                    await MenuBarSnapshot.shared.refresh(on: self.divider.button?.window?.screen)
-                }
-            }
         }
         chevron.button?.image = Icons.chevron(collapsed: isCollapsed)
         chevron.button?.image?.isTemplate = true

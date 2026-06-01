@@ -12,9 +12,14 @@ final class SecondBarPanel {
     private var dismissMonitor: Any?
     private var autoHideTimer: Timer?
     private let onActivate: (MenuBarItem) -> Void
+    /// Reveal the real bar and keep it revealed (auto-rehide collapses it later).
+    /// Returns once the menu bar has re-laid-out, so a following scan is fresh.
+    private let revealAndStay: () -> Void
 
-    init(onActivate: @escaping (MenuBarItem) -> Void) {
+    init(onActivate: @escaping (MenuBarItem) -> Void,
+         revealAndStay: @escaping () -> Void) {
         self.onActivate = onActivate
+        self.revealAndStay = revealAndStay
     }
 
     /// Set as soon as a show starts (before the async image capture finishes) so
@@ -28,22 +33,26 @@ final class SecondBarPanel {
             hide()
         } else {
             isPresenting = true
-            show(anchor: screen)
+            Task { await show(anchor: screen) }
         }
     }
 
-    func show(anchor screen: NSScreen?) {
+    func show(anchor screen: NSScreen?) async {
         isPresenting = true
         // Never leave an old panel behind — collapse any existing one first.
         hidePanelOnly()
 
-        // Read from the cached snapshot taken while items were visible — we do NOT
-        // reveal hidden items here, which is what caused the flash of icons before
-        // the panel appeared. The snapshot is refreshed at launch and on every
-        // reveal-in-place, so it stays current.
-        let snap = MenuBarSnapshot.shared
-        let items = snap.items
-        let images = snap.images
+        // Reveal the real bar and KEEP it revealed, then scan FRESH. This is the
+        // key correctness fix: status-item windowIDs churn, so a cached snapshot
+        // goes stale — clicking would hit whatever item now owns that old id (we
+        // saw a Notion icon resolve to Control Center). Scanning at click time,
+        // with everything on screen, gives current ids so clicks land correctly.
+        // Reveal-and-STAY (vs the old reveal-then-collapse) means no flicker; the
+        // bar re-collapses later via the owner's auto-rehide timer.
+        revealAndStay()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        let items = MenuBarScanner.scan(on: screen)
+        let images = await MenuBarItemCapture.captureImages(for: items)
 
         let root = SecondBarView(items: items, images: images) { [weak self] item in
             self?.onActivate(item)
