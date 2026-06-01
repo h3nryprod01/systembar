@@ -19,9 +19,13 @@ import AppKit
 ///   [ … icons that collapse … ] [divider] [ … pinned icons … ] [chevron]
 @MainActor
 final class ControlItemManager {
-    /// Width the divider expands to when collapsing. Large enough to shove the
-    /// hidden section past the left screen edge on any display.
-    private static let collapsedLength: CGFloat = 10_000
+    /// Width the divider expands to when collapsing. Bounded to roughly the
+    /// screen width — Hidden Bar found that very large values (e.g. 10000) cause
+    /// pathological layout/memory behaviour. Computed per the active screen.
+    private static func collapsedLength(for screen: NSScreen?) -> CGFloat {
+        let width = screen?.frame.width ?? NSScreen.main?.frame.width ?? 2000
+        return max(500, min(width + 200, 4000))
+    }
     private static let expandedLength: CGFloat = 1
 
     private let chevron: NSStatusItem
@@ -61,18 +65,15 @@ final class ControlItemManager {
     func install() {
         configureChevron()
         configureDivider()
-        applyState()
-        // Auto-collapse on launch is finicky: at didFinishLaunching the menu bar
-        // and our status items aren't fully laid out / position-restored yet, and
-        // re-setting the divider to the same length is a no-op that triggers no
-        // re-layout. So we "nudge" (expand → collapse) at a few points until it
-        // takes. Retries cover slow restores on busy menu bars.
+        // Start expanded; collapse a beat later. Following Hidden Bar: at launch
+        // the status items aren't position-restored yet, so collapsing has to
+        // wait ~1s for autosave to place the divider. We don't gate this on
+        // "is anything to the left?" — when collapsed the divider's reported X is
+        // garbage (it's 2000+pt wide), which made the old guard skip wrongly.
+        divider.length = Self.expandedLength
         if isCollapsed {
-            for delay in [0.3, 1.0, 2.0] {
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                    guard let self, self.hasItemsToHide() else { return }
-                    self.nudgeCollapse()
-                }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                self?.applyCollapsed()
             }
         }
         hotkey.setEnabled(Preferences.shared.hotkeyEnabled)
@@ -107,24 +108,23 @@ final class ControlItemManager {
     // MARK: - Public actions
 
     @objc func toggle() {
-        // The expanding-separator trick can only hide icons that sit to the LEFT
-        // of our divider. macOS drops new status items at the far left, so on a
-        // fresh setup the divider is left of everything and collapsing does
-        // nothing. Detect that and guide the user instead of silently failing.
-        if !isCollapsed && !hasItemsToHide() {
-            // Distinguish the two reasons nothing is to the left of the divider:
-            //  - On a SECONDARY display macOS blocks ⌘-drag entirely, so the user
-            //    can never arrange icons there. Point them to the real options.
-            //  - On the main display they just haven't arranged yet.
-            if isOnSecondaryDisplay {
-                showExternalDisplayHint()
-            } else {
-                showArrangeHint()
-            }
+        // On a secondary display macOS blocks ⌘-drag, so the user can never
+        // arrange the divider there and collapsing can't hide anything. Explain
+        // that instead of silently doing nothing.
+        if !isCollapsed && isOnSecondaryDisplay {
+            showExternalDisplayHint()
             return
         }
+        // Otherwise collapse/expand directly — like Hidden Bar, we trust the
+        // user's ⌘-drag arrangement and don't pre-scan to decide whether to act.
+        // (When collapsed, items pushed off-screen report bogus positions, so a
+        // "is anything to the left?" gate gives false negatives and wrongly
+        // blocks the toggle.) The Setup Guide explains arranging the divider.
         isCollapsed.toggle()
     }
+
+    func collapse() { isCollapsed = true }
+    func reveal() { divider.length = Self.expandedLength }
 
     /// True when SystemBar's controls are on a display that is NOT the macOS
     /// main display (the one that owns the draggable menu bar).
@@ -132,51 +132,6 @@ final class ControlItemManager {
         guard let myScreen = divider.button?.window?.screen,
               let mainScreen = NSScreen.screens.first else { return false }
         return myScreen != mainScreen
-    }
-    func collapse() { isCollapsed = true }
-    func reveal() { divider.length = Self.expandedLength }
-
-    /// True if at least one other status item sits to the LEFT of our divider —
-    /// i.e. there is actually something that collapsing would hide.
-    private func hasItemsToHide() -> Bool {
-        guard let dividerWindow = divider.button?.window else { return true }
-        let dividerX = dividerWindow.frame.minX
-        // Only consider items on the SAME screen as our divider — otherwise an
-        // external display's menu-bar items would be counted too.
-        return MenuBarScanner.scan(on: dividerWindow.screen)
-            .contains { $0.frame.minX < dividerX - 2 }
-    }
-
-    /// One-time-feeling alert explaining the ⌘-drag step, shown when the user
-    /// tries to collapse but nothing is positioned to be hidden.
-    private func showArrangeHint() {
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "Nothing to hide yet"
-        alert.informativeText = """
-        SystemBar hides the icons that sit to the LEFT of its divider ( ╲ ), and \
-        right now nothing is to its left.
-
-        Hold ⌘ and drag the ╲ divider to the RIGHT, past the app icons you want to \
-        hide. macOS remembers the order, so you only need to do this once.
-
-        Note: macOS won't let you drag past Control Center items (Wi-Fi, Battery, \
-        Sound, Focus…), so collapsing can't hide those. Use the Second Bar \
-        (\(GlobalHotkey.displayName)) to see and click every icon, including those.
-        """
-        alert.addButton(withTitle: "Got it")
-        if ScreenRecordingPermission.isGranted {
-            alert.addButton(withTitle: "Open Second Bar")
-        }
-        alert.addButton(withTitle: "Open Setup Guide")
-        switch alert.runModal() {
-        case .alertSecondButtonReturn where ScreenRecordingPermission.isGranted:
-            toggleSecondBar()
-        case .alertSecondButtonReturn, .alertThirdButtonReturn:
-            onboarding.show()
-        default:
-            break
-        }
     }
 
     /// Shown when the user tries to collapse on an external display, where macOS
@@ -213,18 +168,6 @@ final class ControlItemManager {
             }
         default:
             break
-        }
-    }
-
-    /// Force the collapsed state to re-apply even if the length is already set:
-    /// briefly expand, then collapse on the next runloop tick so NSStatusItem
-    /// recomputes the layout. Used to make auto-collapse-on-launch reliable.
-    private func nudgeCollapse() {
-        guard isCollapsed else { return }
-        divider.length = Self.expandedLength
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.isCollapsed else { return }
-            self.divider.length = Self.collapsedLength
         }
     }
 
@@ -284,8 +227,21 @@ final class ControlItemManager {
     }
 
     private func applyState() {
-        divider.length = isCollapsed ? Self.collapsedLength : Self.expandedLength
+        if isCollapsed {
+            applyCollapsed()
+        } else {
+            divider.length = Self.expandedLength
+        }
         chevron.button?.image = Icons.chevron(collapsed: isCollapsed)
+        chevron.button?.image?.isTemplate = true
+    }
+
+    /// Expand the divider to push everything on its left off-screen, sizing it to
+    /// the screen the divider currently lives on.
+    private func applyCollapsed() {
+        let screen = divider.button?.window?.screen
+        divider.length = Self.collapsedLength(for: screen)
+        chevron.button?.image = Icons.chevron(collapsed: true)
         chevron.button?.image?.isTemplate = true
     }
 
