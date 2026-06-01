@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SystemBar — a tidy menu bar for macOS</title>
+<meta name="description" content="Collapse the clutter, reveal what you need, and see every menu-bar icon — free and open source.">
+<style>
+  :root { color-scheme: light dark; --bg:#0b0b0d; --fg:#f5f5f7; --muted:#9a9aa2; --accent:#0a84ff; --card:#17171a; }
+  @media (prefers-color-scheme: light){ :root{ --bg:#f5f5f7; --fg:#1d1d1f; --muted:#6e6e73; --card:#fff; } }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font:16px/1.6 -apple-system,"SF Pro Text",system-ui,sans-serif;background:var(--bg);color:var(--fg);}
+  .wrap{max-width:880px;margin:0 auto;padding:80px 24px;}
+  .hero{text-align:center;padding:40px 0 56px;}
+  h1{font-size:56px;letter-spacing:-.02em;margin-bottom:12px;}
+  .tag{font-size:21px;color:var(--muted);max-width:620px;margin:0 auto 32px;}
+  .btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+  .btn{display:inline-block;padding:13px 26px;border-radius:12px;font-weight:600;text-decoration:none;font-size:15px;}
+  .btn.primary{background:var(--accent);color:#fff;}
+  .btn.ghost{background:var(--card);color:var(--fg);border:1px solid #3a3a3c;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin:56px 0;}
+  .card{background:var(--card);border-radius:16px;padding:24px;}
+  .card h3{font-size:17px;margin-bottom:8px;}
+  .card p{font-size:14px;color:var(--muted);}
+  .emoji{font-size:26px;display:block;margin-bottom:10px;}
+  pre{background:var(--card);border-radius:12px;padding:16px 20px;overflow-x:auto;font:13px "SF Mono",Menlo,monospace;margin:8px 0;}
+  .perm{font-size:13px;color:var(--muted);text-align:center;margin-top:8px;}
+  footer{text-align:center;color:var(--muted);font-size:13px;padding:48px 0 0;border-top:1px solid #2a2a2e;margin-top:64px;}
+  a{color:var(--accent);}
+  .heart{color:#ff375f;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>SystemBar</h1>
+    <p class="tag">A tidy, transparent menu bar for macOS. Collapse the clutter, reveal what you need, and see <em>every</em> icon — even hidden Control Center items.</p>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/nguyenphucuong/systembar/releases">Download</a>
+      <a class="btn ghost" href="https://github.com/nguyenphucuong/systembar">View Source</a>
+      <a class="btn ghost" href="https://github.com/sponsors/nguyenphucuong">☕ Support</a>
+    </div>
+    <p class="perm">Free &amp; open source · macOS 14+ · Screen Recording kept opt-in</p>
+  </div>
+
+  <div class="grid">
+    <div class="card"><span class="emoji">🧹</span><h3>One-click collapse</h3><p>Hide the icons you don't need; reveal them with a click or ⌃⌥⌘B. Auto-collapses again after a delay.</p></div>
+    <div class="card"><span class="emoji">🪟</span><h3>Show All Icons</h3><p>A floating, notch-safe panel listing every status item — hidden and visible — with their real images.</p></div>
+    <div class="card"><span class="emoji">🔒</span><h3>Privacy-first</h3><p>Collapse needs no permissions at all. Screen Recording is strictly opt-in, only for the panel's icon capture.</p></div>
+    <div class="card"><span class="emoji">⚡</span><h3>Native &amp; light</h3><p>Pure Swift 6 / AppKit, zero dependencies. Tiny, fast, and signed so permissions persist across updates.</p></div>
+  </div>
+
+  <h2 style="font-size:24px;margin-bottom:8px;">Install</h2>
+  <pre>brew install --cask systembar</pre>
+  <p class="perm">…or grab <a href="https://github.com/nguyenphucuong/systembar/releases">the latest release</a> and drag it to Applications.</p>
+
+  <footer>
+    Made with <span class="heart">♥</span> because Bartender went closed-source.
+    SystemBar is <a href="https://github.com/nguyenphucuong/systembar">free and open source</a> (GPLv3).
+    <br>If it earns a spot in your menu bar, <a href="https://github.com/sponsors/nguyenphucuong">☕ buy me a coffee</a>.
+  </footer>
+</div>
+</body>
+</html>

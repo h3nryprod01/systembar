@@ -100,9 +100,24 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                HStack(spacing: 10) {
+                    Image(systemName: "heart.fill").foregroundStyle(.pink)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("SystemBar is free and open source.")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("If it earns a spot in your menu bar, a coffee keeps it going.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("☕ Support") { Donate.open() }
+                }
+            }
         }
         .formStyle(.grouped)
-        .frame(width: 440, height: 480)
+        .frame(width: 440, height: 520)
         .onAppear { model.refresh() }
     }
 

@@ -295,6 +295,8 @@ final class ControlItemManager {
             .target = self
         menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
             .target = self
+        menu.addItem(withTitle: "Support SystemBar ☕", action: #selector(support), keyEquivalent: "")
+            .target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit SystemBar", action: #selector(quit), keyEquivalent: "q")
             .target = self
@@ -313,6 +315,10 @@ final class ControlItemManager {
 
     @objc private func showOnboarding() {
         onboarding.show()
+    }
+
+    @objc private func support() {
+        Donate.open()
     }
 
     @objc private func quit() {

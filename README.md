@@ -1,65 +1,80 @@
 # SystemBar
 
-A tidy menu-bar manager for macOS — collapse the clutter, pin the icons you
-always want, and reveal hidden ones in a notch-safe floating bar. Built because
-Bartender (closed-source, changed ownership) and Hidden Bar fell short on the
-notch and on per-icon pinning.
+A tidy, transparent menu-bar manager for macOS. Collapse the clutter, reveal what
+you need, and see *every* icon — including hidden Control Center items — in a
+floating, notch-safe panel.
 
-## Two modes
+![Platform](https://img.shields.io/badge/macOS-14%2B-blue?style=flat-square)
+![Swift](https://img.shields.io/badge/Swift-6-orange?style=flat-square)
+![License](https://img.shields.io/badge/license-GPLv3-green?style=flat-square)
+[![Sponsor](https://img.shields.io/badge/%E2%98%95-Support-pink?style=flat-square)](https://github.com/sponsors/nguyenphucuong)
 
-| Mode | Permissions | What clicking the chevron does |
+> Built because Bartender went closed-source and changed hands in 2024, and
+> Hidden Bar / Ice still struggle with the notch and with Control Center icons.
+> SystemBar is free, open source, and keeps Screen Recording strictly opt-in.
+
+## Demo
+
+<!-- Add a GIF here: docs/demo.gif (record collapse + Second Bar) -->
+_A short demo GIF goes here._
+
+## Features
+
+- **Collapse & reveal** menu-bar icons with one click (or `⌃⌥⌘B`) — the proven
+  expanding-separator trick, no special permissions needed.
+- **Show All Icons** — a floating panel that lists *every* status item, hidden
+  and visible, with their real captured images. Notch-safe (it's its own window).
+- **Auto-collapse** again after a configurable delay (default 10s).
+- **Global hotkey**, **launch at login**, **per-screen** aware.
+- **Stable code signing** so granted permissions survive every rebuild.
+
+## Install
+
+### Homebrew (recommended)
+
+```sh
+brew install --cask systembar
+```
+
+### Manual
+
+Download `SystemBar.app` from [Releases](../../releases), move it to
+`/Applications`, and open it.
+
+## Permissions
+
+| Feature | Permission | Why |
 |---|---|---|
-| Reveal-in-place (default) | none | Temporarily expands the divider so the real icons slide back onto the menu bar |
-| Pixel-perfect Second Bar (opt-in) | Screen Recording (+ Accessibility to click) | Opens a floating panel showing every hidden icon, captured for real — notch-safe |
-
-Why the Second Bar needs Screen Recording: macOS has no API to read a per-item
-menu-bar icon. Every Control Center module (WiFi, Bluetooth, Sound, …) is owned
-by one process, so an app-icon approach renders them as identical glyphs. The
-only way to show the true icon is to capture each item's window image — which is
-exactly what Ice and Bartender do, and why they require the same permission.
-SystemBar keeps it strictly opt-in.
-
-## Status
-
-- [x] Collapse / reveal via expanding-separator (0 permissions)
-- [x] Right-click menu: Show/Hide, Open Second Bar, Settings, Quit
-- [x] Pixel-perfect Second Bar via ScreenCaptureKit (per-window capture, notch-safe)
-- [x] Click an item -> reveal + click the real icon (Accessibility)
-- [x] Dismiss Second Bar on outside click; expand on first launch
-- [x] Settings: auto-collapse, launch at login, Second Bar toggle, permission status
-- [x] Launch at login (SMAppService)
-- [ ] Pin individual icons via UI (today: Cmd-drag relative to divider)
-- [ ] Global hotkey to summon the Second Bar
-- [ ] Composite single-shot capture (Ice-style) for fewer SCK calls
-
-## Build & run
-
-    ./scripts/bundle.sh                       # -> build/SystemBar.app
-    open build/SystemBar.app
-
-Rebuild & relaunch:
-
-    ./scripts/bundle.sh && osascript -e 'tell application "SystemBar" to quit'; open build/SystemBar.app
-
-## Interaction
-
-- Left-click chevron  -> reveal icons (in place, or Second Bar if enabled + permitted)
-- Right-click chevron -> menu (Show/Hide, Second Bar, Settings, Quit)
-- Cmd-drag icons left/right of the diagonal divider to choose what hides
+| Collapse / reveal | none | expanding-separator trick |
+| List items in the panel | none | reads the public window list |
+| Capture real icon images | Screen Recording | the only way to image another app's status item; **opt-in**, only for the panel |
+| Click an item from the panel | Accessibility | synthesizes a click into the owning app |
 
 ## How collapsing works
 
-macOS has no public API to hide another app's menu-bar icon. The only working
-technique (used by Bartender / Ice / Hidden Bar) is the expanding separator:
-SystemBar adds a divider status item; you Cmd-drag icons to its left to mark
-them hidden; collapsing expands the divider so it pushes them off the screen
-edge. Icons kept to the right stay always-visible (your pins).
+macOS has **no public API** to hide another app's menu-bar icon. The only working
+technique (used by Bartender / Ice / Hidden Bar) is the *expanding separator*:
+SystemBar adds a divider; you ⌘-drag it to the right, past the icons you want to
+hide; collapsing expands the divider so everything to its left slides off-screen.
 
-## Architecture
+> Note: Control Center items (Wi-Fi, Battery, Sound…) can't always be dragged
+> past, so use **Show All Icons** to see and click those.
 
-    Sources/SystemBar/
-      Core/      ControlItemManager (collapse/reveal, chevron, menu), Preferences, Icons
-      SecondBar/ MenuBarScanner (CGWindowList, no perms), MenuBarItemCapture (SCK),
-                 ScreenRecordingPermission, MenuBarActivator (click-through, AX),
-                 SecondBarPanel / SecondBarView
-      Settings/  SettingsView, SettingsWindowController, LaunchAtLogin
+## Build from source
+
+```sh
+./scripts/bundle.sh            # → build/SystemBar.app (Apple-Development signed)
+open build/SystemBar.app
+```
+
+Swift 6 / Xcode 26+, macOS 14+. No external dependencies.
+
+## Support
+
+SystemBar is free and will stay free. If it earns a spot in your menu bar,
+[☕ buy me a coffee](https://github.com/sponsors/nguyenphucuong) — it keeps the
+project going. Thank you!
+
+## License
+
+[GPLv3](LICENSE) — same spirit as Ice. Contributions welcome.
