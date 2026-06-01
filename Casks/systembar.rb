@@ -1,6 +1,6 @@
 cask "systembar" do
   version "0.1.0"
-  sha256 :no_check # replace with the release zip's sha256 once published
+  sha256 "35843e04dd648c0156fcbf6f0eac411fa0afa559ee41835839b5f9bc37e1e358"
 
   url "https://github.com/h3nryprod01/systembar/releases/download/v#{version}/SystemBar.zip"
   name "SystemBar"
