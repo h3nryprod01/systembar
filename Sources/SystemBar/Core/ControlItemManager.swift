@@ -152,20 +152,30 @@ final class ControlItemManager {
     private func showArrangeHint() {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
-        alert.messageText = "Arrange your icons first"
+        alert.messageText = "Nothing to hide yet"
         alert.informativeText = """
-        SystemBar hides the icons that sit to the LEFT of its divider ( ╲ ).
+        SystemBar hides the icons that sit to the LEFT of its divider ( ╲ ), and \
+        right now nothing is to its left.
 
-        Right now nothing is to the left of it, so there's nothing to hide.
+        Hold ⌘ and drag the ╲ divider to the RIGHT, past the app icons you want to \
+        hide. macOS remembers the order, so you only need to do this once.
 
-        Hold ⌘ and drag the icons you want to hide to the LEFT of the ╲ divider \
-        (or drag the divider to the right past them). macOS remembers the order, \
-        so you only need to do this once.
+        Note: macOS won't let you drag past Control Center items (Wi-Fi, Battery, \
+        Sound, Focus…), so collapsing can't hide those. Use the Second Bar \
+        (\(GlobalHotkey.displayName)) to see and click every icon, including those.
         """
         alert.addButton(withTitle: "Got it")
+        if ScreenRecordingPermission.isGranted {
+            alert.addButton(withTitle: "Open Second Bar")
+        }
         alert.addButton(withTitle: "Open Setup Guide")
-        if alert.runModal() == .alertSecondButtonReturn {
+        switch alert.runModal() {
+        case .alertSecondButtonReturn where ScreenRecordingPermission.isGranted:
+            toggleSecondBar()
+        case .alertSecondButtonReturn, .alertThirdButtonReturn:
             onboarding.show()
+        default:
+            break
         }
     }
 

@@ -39,7 +39,7 @@ struct OnboardingView: View {
                  "Hold ⌘ and drag the icons you want to hide to the LEFT of SystemBar's diagonal divider (╲). Icons kept to the right stay always-visible.")
             step("2", "chevron.left.2",
                  "Collapse & reveal",
-                 "Click the chevron (or press ⌥⌘Space) to hide everything left of the divider, and again to show it. macOS only lets an app hide icons this way — it can't reposition them for you, which is why step 1 is manual.")
+                 "Click the chevron (or press \(GlobalHotkey.displayName)) to hide everything left of the divider, and again to show it. macOS only lets an app hide icons this way — it can't reposition them for you, which is why step 1 is manual.")
             step("3", "rectangle.on.rectangle",
                  "Second Bar (optional)",
                  "Turn on the pixel-perfect Second Bar in Settings to see hidden icons in a floating, notch-safe panel. It needs Screen Recording to capture each icon.")
