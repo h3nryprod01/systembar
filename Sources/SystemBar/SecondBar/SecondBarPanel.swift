@@ -6,15 +6,31 @@ import SwiftUI
 ///
 /// Living in its own window means it is **immune to the notch** — items never get
 /// swallowed the way they do when crammed into the real menu bar.
+/// Lets the Second Bar temporarily bring hidden menu-bar items back on screen so
+/// they can be captured, then restore the previous collapse state.
+@MainActor
+protocol ItemRevealing: AnyObject {
+    /// Expand so hidden items return on screen. Returns true if a reveal actually
+    /// happened (i.e. the bar was collapsed); false if nothing needed revealing.
+    func beginTemporaryReveal() -> Bool
+    /// Restore the collapsed state after capture.
+    func endTemporaryReveal()
+}
+
 @MainActor
 final class SecondBarPanel {
     private var panel: NSPanel?
     private var dismissMonitor: Any?
     private var autoHideTimer: Timer?
     private let onActivate: (MenuBarItem) -> Void
+    /// Bridges to ControlItemManager so the panel can briefly bring hidden items
+    /// back on screen for capture (ScreenCaptureKit can't image an off-screen
+    /// window) and restore afterwards.
+    private weak var revealer: ItemRevealing?
 
-    init(onActivate: @escaping (MenuBarItem) -> Void) {
+    init(onActivate: @escaping (MenuBarItem) -> Void, revealer: ItemRevealing) {
         self.onActivate = onActivate
+        self.revealer = revealer
     }
 
     /// Set as soon as a show starts (before the async image capture finishes) so
@@ -40,9 +56,15 @@ final class SecondBarPanel {
         // Only list items from the menu bar on the anchor screen, so an external
         // display's items don't bleed into this bar's panel.
         let items = MenuBarScanner.scan(on: screen)
-        // Capture each item's real image (requires Screen Recording). Mode B is
-        // only entered when that permission is granted, so this should populate.
-        let images = await MenuBarItemCapture.captureImages(for: items)
+        // Capture each item's real image (requires Screen Recording). Hidden items
+        // are off-screen and can't be captured there, so temporarily reveal the
+        // bar, capture everything, then re-collapse — all before showing the panel.
+        var images: [CGWindowID: NSImage] = [:]
+        let didReveal = (revealer?.beginTemporaryReveal() ?? false)
+        if didReveal { try? await Task.sleep(nanoseconds: 180_000_000) }
+        let revealed = MenuBarScanner.scan(on: screen)
+        images = await MenuBarItemCapture.captureImages(for: revealed)
+        if didReveal { revealer?.endTemporaryReveal() }
 
         let root = SecondBarView(items: items, images: images) { [weak self] item in
             self?.onActivate(item)

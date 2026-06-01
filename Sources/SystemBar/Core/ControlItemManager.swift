@@ -34,9 +34,10 @@ final class ControlItemManager {
 
     private let chevron: NSStatusItem
     private let divider: NSStatusItem
-    private lazy var secondBar = SecondBarPanel { [weak self] item in
-        self?.activate(item)
-    }
+    private lazy var secondBar = SecondBarPanel(
+        onActivate: { [weak self] item in self?.activate(item) },
+        revealer: self
+    )
     private let settings = SettingsWindowController()
     private let onboarding = OnboardingWindowController()
     private lazy var hotkey = GlobalHotkey { [weak self] in self?.primaryAction() }
@@ -129,6 +130,7 @@ final class ControlItemManager {
 
     func collapse() { isCollapsed = true }
     func reveal() { divider.length = Self.expandedLength }
+
 
     /// True when SystemBar's controls are on a display that is NOT the macOS
     /// main display (the one that owns the draggable menu bar).
@@ -297,5 +299,19 @@ final class ControlItemManager {
     @objc private func quit() {
         reveal()
         NSApp.terminate(nil)
+    }
+}
+
+// MARK: - ItemRevealing
+
+extension ControlItemManager: ItemRevealing {
+    func beginTemporaryReveal() -> Bool {
+        guard isCollapsed else { return false }
+        divider.length = Self.expandedLength
+        return true
+    }
+
+    func endTemporaryReveal() {
+        divider.length = Self.collapsedLength(for: divider.button?.window?.screen)
     }
 }
