@@ -13,9 +13,9 @@ floating, notch-safe panel.
 ![License](https://img.shields.io/badge/license-GPLv3-green?style=flat-square)
 [![Sponsor](https://img.shields.io/badge/%E2%98%95-Support-pink?style=flat-square)](https://paypal.me/CuongNguyen557)
 
-> Built because Bartender went closed-source and changed hands in 2024, and the
-> MacBook notch keeps swallowing menu-bar icons. SystemBar is free, open source,
-> and keeps Screen Recording strictly opt-in.
+> Built because the MacBook notch keeps swallowing menu-bar icons and the menu
+> bar gets cluttered fast. SystemBar is free, open source, and keeps Screen
+> Recording strictly opt-in.
 
 ## Screenshots
 
