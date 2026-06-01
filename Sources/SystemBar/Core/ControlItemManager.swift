@@ -112,10 +112,26 @@ final class ControlItemManager {
         // fresh setup the divider is left of everything and collapsing does
         // nothing. Detect that and guide the user instead of silently failing.
         if !isCollapsed && !hasItemsToHide() {
-            showArrangeHint()
+            // Distinguish the two reasons nothing is to the left of the divider:
+            //  - On a SECONDARY display macOS blocks ⌘-drag entirely, so the user
+            //    can never arrange icons there. Point them to the real options.
+            //  - On the main display they just haven't arranged yet.
+            if isOnSecondaryDisplay {
+                showExternalDisplayHint()
+            } else {
+                showArrangeHint()
+            }
             return
         }
         isCollapsed.toggle()
+    }
+
+    /// True when SystemBar's controls are on a display that is NOT the macOS
+    /// main display (the one that owns the draggable menu bar).
+    private var isOnSecondaryDisplay: Bool {
+        guard let myScreen = divider.button?.window?.screen,
+              let mainScreen = NSScreen.screens.first else { return false }
+        return myScreen != mainScreen
     }
     func collapse() { isCollapsed = true }
     func reveal() { divider.length = Self.expandedLength }
@@ -150,6 +166,43 @@ final class ControlItemManager {
         alert.addButton(withTitle: "Open Setup Guide")
         if alert.runModal() == .alertSecondButtonReturn {
             onboarding.show()
+        }
+    }
+
+    /// Shown when the user tries to collapse on an external display, where macOS
+    /// blocks the ⌘-drag arranging that collapsing depends on.
+    private func showExternalDisplayHint() {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Collapsing isn't available on this display"
+        alert.informativeText = """
+        macOS only lets you ⌘-drag and arrange menu bar icons on your main \
+        display, so SystemBar can't hide icons on a secondary screen.
+
+        Two ways around it:
+
+        • Use the Second Bar here — press \(GlobalHotkey.displayName) (or click the \
+        chevron) to see and click every icon. No arranging needed.
+
+        • Or make this screen your main display: System Settings → Displays, then \
+        drag the white menu bar onto this screen. Collapsing then works here too.
+        """
+        alert.addButton(withTitle: "Open Second Bar")
+        alert.addButton(withTitle: "Open Display Settings")
+        alert.addButton(withTitle: "Cancel")
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            if ScreenRecordingPermission.isGranted {
+                toggleSecondBar()
+            } else {
+                ScreenRecordingPermission.request()
+            }
+        case .alertSecondButtonReturn:
+            if let url = URL(string: "x-apple.systempreferences:com.apple.Displays-Settings.extension") {
+                NSWorkspace.shared.open(url)
+            }
+        default:
+            break
         }
     }
 

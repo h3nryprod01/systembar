@@ -22,7 +22,8 @@ final class GlobalHotkey {
         self.onFire = onFire
     }
 
-    var description: String { "⌃⌥⌘B" }
+    static let displayName = "⌃⌥⌘B"
+    var description: String { Self.displayName }
 
     @discardableResult
     func register() -> Bool {
