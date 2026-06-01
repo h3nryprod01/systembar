@@ -35,14 +35,14 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
 
             step("1", "command.square",
-                 "Arrange your icons",
-                 "Hold ⌘ and drag the icons you want to hide to the LEFT of SystemBar's diagonal divider (╲). Icons kept to the right stay always-visible.")
+                 "Arrange the divider",
+                 "Hold ⌘ and drag SystemBar's diagonal divider (╲) to the RIGHT, past the icons you want to hide. Everything to the LEFT of ╲ gets hidden; icons kept to the right stay always-visible. macOS remembers the order — do it once.")
             step("2", "chevron.left.2",
                  "Collapse & reveal",
-                 "Click the chevron (or press \(GlobalHotkey.displayName)) to hide everything left of the divider, and again to show it. macOS only lets an app hide icons this way — it can't reposition them for you, which is why step 1 is manual.")
+                 "Click the chevron (or press \(GlobalHotkey.displayName)) to hide everything left of the divider, and again to show it. macOS lets an app hide icons this way but can't drag them for you, which is why step 1 is manual.")
             step("3", "rectangle.on.rectangle",
-                 "Second Bar (optional)",
-                 "Turn on the pixel-perfect Second Bar in Settings to see hidden icons in a floating, notch-safe panel. It needs Screen Recording to capture each icon.")
+                 "Second Bar — shows ALL icons",
+                 "Click the chevron (in Second Bar mode) to open a floating, notch-safe panel listing EVERY menu bar icon — hidden and visible — so you can see and click any of them. Great for Control Center items that can't be arranged. Needs Screen Recording to capture each icon.")
 
             Spacer()
             Text("You can reopen this guide any time from the right-click menu.")

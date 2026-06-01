@@ -261,7 +261,6 @@ final class ControlItemManager {
     }
 
     private func showMenu() {
-        guard let button = chevron.button else { return }
         let menu = NSMenu()
         let toggleTitle = isCollapsed ? "Show Icons in Menu Bar" : "Hide Icons in Menu Bar"
         menu.addItem(withTitle: toggleTitle, action: #selector(toggle), keyEquivalent: "")
@@ -278,10 +277,13 @@ final class ControlItemManager {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit SystemBar", action: #selector(quit), keyEquivalent: "q")
             .target = self
-        // Pop up just below the chevron without hijacking the left-click action.
-        menu.popUp(positioning: nil,
-                   at: NSPoint(x: 0, y: button.bounds.height + 4),
-                   in: button)
+        // Attach the menu and let the status item open it: macOS then positions it
+        // correctly under the bar (the manual popUp(at:) overflowed the top edge,
+        // clipping the first item behind a scroll arrow). Detach afterwards so the
+        // left-click toggle keeps working.
+        chevron.menu = menu
+        chevron.button?.performClick(nil)
+        chevron.menu = nil
     }
 
     @objc private func openSettings() {

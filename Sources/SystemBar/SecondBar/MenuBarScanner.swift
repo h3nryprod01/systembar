@@ -91,10 +91,15 @@ enum MenuBarScanner {
                 height: bounds.height
             )
 
-            // Restrict to the target screen's menu bar, when one is given.
+            // Restrict to the target screen's menu BAR (its top strip), matching
+            // on Y only. We must NOT filter on X: items SystemBar has collapsed
+            // are pushed far off the left edge (x ≈ -4000), and the Second Bar's
+            // whole job is to show exactly those. Matching the menu-bar row keeps
+            // a second display's bar out while still including hidden items.
             if let screen {
-                let center = CGPoint(x: cocoaFrame.midX, y: cocoaFrame.midY)
-                guard screen.frame.contains(center) else { return nil }
+                let barTop = screen.frame.maxY
+                let barBottom = barTop - max(NSStatusBar.system.thickness, 24) - 4
+                guard cocoaFrame.midY <= barTop, cocoaFrame.midY >= barBottom else { return nil }
             }
 
             return MenuBarItem(id: windowID, pid: pid, ownerName: owner, frame: cocoaFrame)
