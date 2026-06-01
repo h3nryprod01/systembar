@@ -123,9 +123,12 @@ final class ControlItemManager {
     /// True if at least one other status item sits to the LEFT of our divider —
     /// i.e. there is actually something that collapsing would hide.
     private func hasItemsToHide() -> Bool {
-        guard let dividerX = divider.button?.window?.frame.minX else { return true }
-        // Any non-SystemBar item whose left edge is left of the divider.
-        return MenuBarScanner.scan().contains { $0.frame.minX < dividerX - 2 }
+        guard let dividerWindow = divider.button?.window else { return true }
+        let dividerX = dividerWindow.frame.minX
+        // Only consider items on the SAME screen as our divider — otherwise an
+        // external display's menu-bar items would be counted too.
+        return MenuBarScanner.scan(on: dividerWindow.screen)
+            .contains { $0.frame.minX < dividerX - 2 }
     }
 
     /// One-time-feeling alert explaining the ⌘-drag step, shown when the user

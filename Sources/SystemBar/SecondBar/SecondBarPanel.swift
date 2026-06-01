@@ -37,7 +37,9 @@ final class SecondBarPanel {
         // Never leave an old panel behind — collapse any existing one first.
         hidePanelOnly()
 
-        let items = MenuBarScanner.scan()
+        // Only list items from the menu bar on the anchor screen, so an external
+        // display's items don't bleed into this bar's panel.
+        let items = MenuBarScanner.scan(on: screen)
         // Capture each item's real image (requires Screen Recording). Mode B is
         // only entered when that permission is granted, so this should populate.
         let images = await MenuBarItemCapture.captureImages(for: items)

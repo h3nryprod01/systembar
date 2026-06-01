@@ -43,6 +43,8 @@ enum MenuBarActivator {
             // Match by windowID — it is unique and stable. Matching by pid/owner
             // is wrong: every Control Center module shares one process, so that
             // would always resolve to the leftmost item, not the clicked one.
+            // Scan all screens (no filter): we match by exact windowID, and the
+            // item already carries its true global position.
             let current = MenuBarScanner.scan().first { $0.id == item.id }
             guard let target = current else {
                 // Item didn't reappear (e.g. it's a "show when active" module

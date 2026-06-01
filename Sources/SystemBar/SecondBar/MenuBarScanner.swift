@@ -35,7 +35,15 @@ enum MenuBarScanner {
     private static let minIconWidth: CGFloat = 8
     private static let maxIconWidth: CGFloat = 64
 
-    static func scan() -> [MenuBarItem] {
+    /// Scan menu-bar status items, optionally limited to a single screen.
+    ///
+    /// With an external display attached there are TWO menu bars, each with its
+    /// own status items. `CGWindowListCopyWindowInfo` returns both sets in one
+    /// global coordinate space; sorting them purely by X interleaves the two
+    /// bars. Passing the screen whose menu bar we're acting on keeps only that
+    /// bar's items, so the Second Bar, click-through and collapse logic all
+    /// operate on a single, correctly-ordered bar.
+    static func scan(on screen: NSScreen? = nil) -> [MenuBarItem] {
         let statusLayer = Int(CGWindowLevelForKey(.statusWindow)) // 25
 
         // IMPORTANT: do NOT use `.optionOnScreenOnly`. When SystemBar has collapsed
@@ -47,7 +55,11 @@ enum MenuBarScanner {
             return []
         }
 
-        let screenHeight = NSScreen.screens.first?.frame.height ?? 0
+        // CGWindow coordinates are global, top-left origin anchored at the main
+        // display's top-left. The flip to Cocoa (bottom-left) uses the MAIN
+        // screen height; this is correct across all displays because both spaces
+        // share that anchor.
+        let mainHeight = NSScreen.screens.first?.frame.height ?? 0
 
         let items: [MenuBarItem] = raw.compactMap { info in
             guard
@@ -74,10 +86,16 @@ enum MenuBarScanner {
             // CGWindow bounds are top-left origin; flip to Cocoa bottom-left.
             let cocoaFrame = CGRect(
                 x: bounds.origin.x,
-                y: screenHeight - bounds.origin.y - bounds.height,
+                y: mainHeight - bounds.origin.y - bounds.height,
                 width: bounds.width,
                 height: bounds.height
             )
+
+            // Restrict to the target screen's menu bar, when one is given.
+            if let screen {
+                let center = CGPoint(x: cocoaFrame.midX, y: cocoaFrame.midY)
+                guard screen.frame.contains(center) else { return nil }
+            }
 
             return MenuBarItem(id: windowID, pid: pid, ownerName: owner, frame: cocoaFrame)
         }
