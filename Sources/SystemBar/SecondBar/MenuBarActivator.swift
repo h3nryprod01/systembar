@@ -26,10 +26,12 @@ enum MenuBarActivator {
 
     /// Click the given item at its on-screen location.
     /// - Parameter reveal: called first to make sure hidden items are on screen.
-    /// - Parameter rehide: called after a short delay to restore hidden state.
-    static func click(_ item: MenuBarItem,
-                      reveal: () -> Void,
-                      rehide: @escaping @MainActor () -> Void) {
+    ///   The caller is responsible for re-collapsing later (e.g. via auto-rehide);
+    ///   we deliberately do NOT force a quick re-collapse here, because moving the
+    ///   status item dismisses popover-style menus (Notion, etc.) the instant they
+    ///   open. NSMenu-style menus (Telegram) survive it, which is why only some
+    ///   apps appeared to "flash and vanish".
+    static func click(_ item: MenuBarItem, reveal: () -> Void) {
         guard hasAccessibility else {
             requestAccessibility()
             return
@@ -43,42 +45,25 @@ enum MenuBarActivator {
             // Match by windowID — it is unique and stable. Matching by pid/owner
             // is wrong: every Control Center module shares one process, so that
             // would always resolve to the leftmost item, not the clicked one.
-            // Scan all screens (no filter): we match by exact windowID, and the
-            // item already carries its true global position.
             let current = MenuBarScanner.scan().first { $0.id == item.id }
-            guard let target = current else {
-                // Item didn't reappear (e.g. it's a "show when active" module
-                // that's currently inactive). Nothing to click; just rehide.
-                rehide()
-                return
-            }
-            postClick(at: target.frame, rehide: rehide)
+            guard let target = current else { return }
+            postClick(at: target.frame)
         }
     }
 
-    /// Synthesize a left click at the centre of `cocoaFrame`, restoring the
-    /// user's real cursor position afterwards so it doesn't visibly jump and
-    /// stay on the menu bar.
-    private static func postClick(at cocoaFrame: CGRect,
-                                  rehide: @escaping @MainActor () -> Void) {
+    /// Synthesize a left click at the centre of `cocoaFrame`. The cursor is left
+    /// on the item (not warped back): warping the cursor away can dismiss a
+    /// transient popover the moment it opens. The bar re-collapses later via the
+    /// owner's auto-rehide timer, by which time the menu/popover is done.
+    private static func postClick(at cocoaFrame: CGRect) {
         // Convert Cocoa (bottom-left) centre back to CG (top-left) for CGEvent.
         let screenHeight = NSScreen.screens.first?.frame.height ?? 0
         let point = CGPoint(x: cocoaFrame.midX, y: screenHeight - cocoaFrame.midY)
-        let restore = CGEvent(source: nil)?.location ?? point
 
-        // Move the cursor to the item, then click. A real move first makes the
-        // target process register the click reliably.
         warp(to: point)
         post(.leftMouseDown, at: point)
-
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             post(.leftMouseUp, at: point)
-            // Put the cursor back where the user left it. The opened menu/popover
-            // stays open because the click already landed.
-            warp(to: restore)
-
-            // Re-hide a moment later so the bar stays tidy.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: rehide)
         }
     }
 

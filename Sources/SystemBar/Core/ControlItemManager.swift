@@ -177,10 +177,6 @@ final class ControlItemManager {
         }
     }
 
-    /// Re-apply whatever collapse state the user has chosen (used after a
-    /// temporary reveal for clicking a hidden item).
-    func restoreCollapseState() { applyState() }
-
     /// If auto-rehide is enabled and we're currently revealed, schedule a
     /// re-collapse after the configured idle period.
     private func scheduleAutoRehide() {
@@ -211,14 +207,14 @@ final class ControlItemManager {
         }
     }
 
-    /// Activate the real item a Second Bar proxy stands for: reveal it, click it,
-    /// then restore the collapsed state.
+    /// Activate the real item a Second Bar proxy stands for: reveal the bar in
+    /// place and click the real icon. We switch to the un-collapsed state (rather
+    /// than a momentary reveal) so the auto-rehide timer re-collapses it later —
+    /// re-collapsing immediately would move the icon and dismiss popover menus
+    /// (Notion) the instant they open.
     private func activate(_ item: MenuBarItem) {
-        MenuBarActivator.click(
-            item,
-            reveal: { [weak self] in self?.reveal() },
-            rehide: { [weak self] in self?.restoreCollapseState() }
-        )
+        if isCollapsed { isCollapsed = false }   // arms auto-rehide via didSet
+        MenuBarActivator.click(item, reveal: { [weak self] in self?.reveal() })
     }
 
     // MARK: - Configuration
