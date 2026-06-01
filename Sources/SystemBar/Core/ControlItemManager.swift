@@ -19,12 +19,13 @@ import AppKit
 ///   [ … icons that collapse … ] [divider] [ … pinned icons … ] [chevron]
 @MainActor
 final class ControlItemManager {
-    /// Width the divider expands to when collapsing. Bounded to roughly the
-    /// screen width — Hidden Bar found that very large values (e.g. 10000) cause
-    /// pathological layout/memory behaviour. Computed per the active screen.
+    /// Width the divider expands to when collapsing. Measured against Hidden Bar
+    /// 1.8, whose divider expands to ~5000pt at runtime — a width bounded to
+    /// screenWidth (≈1700 here) is too small to push items off the left edge, so
+    /// nothing actually hides. Use a generous multiple of the widest screen.
     private static func collapsedLength(for screen: NSScreen?) -> CGFloat {
         let width = screen?.frame.width ?? NSScreen.main?.frame.width ?? 2000
-        return max(500, min(width + 200, 4000))
+        return max(5000, width * 3)
     }
     // Expanded width of the divider. 20pt (matching Hidden Bar) so it presents a
     // real, ⌘-draggable target — a 1pt divider is nearly impossible to grab,
