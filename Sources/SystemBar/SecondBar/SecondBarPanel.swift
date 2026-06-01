@@ -60,9 +60,18 @@ final class SecondBarPanel {
         // is what makes the panel show every icon, not just those right of the
         // divider.
         let didReveal = (revealer?.beginTemporaryReveal() ?? false)
-        if didReveal { try? await Task.sleep(nanoseconds: 180_000_000) }
-        let items = MenuBarScanner.scan(on: screen)
-        let images = await MenuBarItemCapture.captureImages(for: items)
+        // Don't capture on a fixed delay — the menu bar re-lays-out asynchronously
+        // after a reveal, so a fixed sleep is racy (sometimes blank). Poll until
+        // the item set is stable and fully on screen.
+        let items = await stableItems(on: screen)
+        var images = await MenuBarItemCapture.captureImages(for: items)
+        // Retry once for any item that didn't yield an image (transient miss).
+        let missing = items.filter { images[$0.id] == nil }
+        if !missing.isEmpty {
+            try? await Task.sleep(nanoseconds: 80_000_000)
+            let retry = await MenuBarItemCapture.captureImages(for: missing)
+            images.merge(retry) { _, new in new }
+        }
         if didReveal { revealer?.endTemporaryReveal() }
 
         let root = SecondBarView(items: items, images: images) { [weak self] item in
@@ -97,6 +106,26 @@ final class SecondBarPanel {
     func hide() {
         isPresenting = false
         hidePanelOnly()
+    }
+
+    /// Poll the scanner until the item set is stable (same ids two reads in a row)
+    /// and every item sits on screen, so capture sees fully laid-out windows.
+    /// Falls back to whatever's there after ~600ms.
+    private func stableItems(on screen: NSScreen?) async -> [MenuBarItem] {
+        var previousIDs: Set<CGWindowID> = []
+        var last: [MenuBarItem] = []
+        for _ in 0..<8 {
+            try? await Task.sleep(nanoseconds: 70_000_000) // 70ms between polls
+            let items = MenuBarScanner.scan(on: screen)
+            let ids = Set(items.map(\.id))
+            let allOnScreen = items.allSatisfy { $0.frame.minX >= 0 }
+            if !items.isEmpty, ids == previousIDs, allOnScreen {
+                return items
+            }
+            previousIDs = ids
+            last = items
+        }
+        return last
     }
 
     /// Close the panel automatically after the configured idle period. Scheduled

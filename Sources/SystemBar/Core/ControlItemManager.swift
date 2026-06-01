@@ -275,7 +275,7 @@ final class ControlItemManager {
         // Always offer the Second Bar — it's the way to see ALL icons (incl.
         // hidden Control Center items). If Screen Recording isn't granted yet,
         // opening it will prompt for the permission.
-        menu.addItem(withTitle: "Open Second Bar (all icons)", action: #selector(openSecondBar), keyEquivalent: "")
+        menu.addItem(withTitle: "Show All Icons", action: #selector(openSecondBar), keyEquivalent: "")
             .target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Setup Guide…", action: #selector(showOnboarding), keyEquivalent: "")
