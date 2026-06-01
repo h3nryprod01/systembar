@@ -314,23 +314,31 @@ final class ControlItemManager {
         Donate.open()
     }
 
-    /// Make the divider easy to grab: fully expand the bar and briefly flash the
-    /// divider wider so it stands out, then settle back to its draggable width.
+    /// Make the divider easy to grab. Previously the divider was flashed wide for
+    /// 0.6s while a modal alert ran, so it shrank back before the user could grab
+    /// it ("popup then vanished"). Now we keep the bar expanded AND the divider
+    /// wide for the WHOLE time the instruction sheet is open, and only restore it
+    /// when the user clicks Done — so they have as long as they need to ⌘-drag.
     @objc private func revealDivider() {
-        if isCollapsed { isCollapsed = false } // expand so nothing is off-screen
-        divider.length = 40                    // flash wider to draw the eye
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-            self?.divider.length = Self.expandedLength
-        }
+        if isCollapsed { isCollapsed = false }   // expand so nothing is off-screen
+        divider.length = 44                       // stays wide while the sheet is up
+
         let alert = NSAlert()
-        alert.messageText = "Drag the divider now"
-        alert.informativeText = "The diagonal divider ( ╲ ) is highlighted in the menu bar. Hold ⌘ and drag it left/right to choose which icons hide when you collapse."
-        alert.addButton(withTitle: "OK")
-        // Run the alert AFTER the flash so the user sees the wide divider first.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            NSApp.activate(ignoringOtherApps: true)
-            alert.runModal()
-        }
+        alert.messageText = "Rearrange your icons"
+        alert.informativeText = """
+        The divider is now a wide highlighted block ( ╲ ) in the menu bar.
+
+        Hold ⌘ and drag it left or right, past the icons you want to hide. \
+        Everything to the LEFT of it gets hidden when you collapse.
+
+        Take your time — click Done when you're finished.
+        """
+        alert.addButton(withTitle: "Done")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
+
+        // User finished dragging — restore the normal draggable width.
+        divider.length = Self.expandedLength
     }
 
     @objc private func quit() {

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a8bff"/>
+      <stop offset="1" stop-color="#1f5fd6"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef3ff"/>
+    </linearGradient>
+    <filter id="ds" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="26" flood-color="#0a2f6b" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <!-- macOS rounded-square base -->
+  <rect x="92" y="92" width="840" height="840" rx="188" fill="url(#bg)"/>
+  <!-- subtle top sheen -->
+  <rect x="92" y="92" width="840" height="420" rx="188" fill="#ffffff" opacity="0.06"/>
+
+  <!-- a stylized menu bar strip -->
+  <g filter="url(#ds)">
+    <rect x="214" y="430" width="596" height="164" rx="56" fill="url(#bar)"/>
+  </g>
+
+  <!-- chevron (collapse control) on the right of the strip -->
+  <g stroke="#2a6df0" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M712 478 l-44 34 l44 34"/>
+    <path d="M760 478 l-44 34 l44 34"/>
+  </g>
+
+  <!-- three pinned icon dots to the left -->
+  <g fill="#3a7bf0">
+    <circle cx="318" cy="512" r="30"/>
+    <circle cx="410" cy="512" r="30"/>
+    <circle cx="502" cy="512" r="30"/>
+  </g>
+
+  <!-- the diagonal divider, the signature element -->
+  <line x1="586" y1="468" x2="630" y2="556" stroke="#1f5fd6" stroke-width="26" stroke-linecap="round"/>
+</svg>

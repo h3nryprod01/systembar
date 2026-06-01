@@ -22,6 +22,10 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/SystemBar"
 cp "$ROOT/scripts/Info.plist" "$APP/Contents/Info.plist"
+# App icon (shows in dialogs, Finder, Cmd-Tab, etc.)
+if [ -f "$ROOT/assets/AppIcon.icns" ]; then
+    cp "$ROOT/assets/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+fi
 
 # Sign with a STABLE identity so macOS keeps the granted TCC permissions across
 # rebuilds. Ad-hoc signing changes the cdhash every build and wipes them.
